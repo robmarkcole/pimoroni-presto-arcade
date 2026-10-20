@@ -235,6 +235,7 @@ GAME_FILES = (
     "awesome_game.py",
     "random_maze.py",
     "frogger.py",
+    "ogre_smash.py",
 )
 
 files = os.listdir()

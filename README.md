@@ -10,10 +10,27 @@ QwSTPad on the board's Qw/ST (I2C) connector.
 - **Frogger** — cross traffic and ride platforms through four progressively
   faster themes: River, Night, Ice, and Lava. Game Over retries the current
   level rather than discarding level progress.
+- **Ogre Smash!** — survive Easy Street by jumping lakes, smashing cars for
+  lightning power-ups, and blasting trucks. This is the single-level MVP.
 
 All games use the QwSTPad at its default address (`0x21`) on I2C 0, with SDA
 on pin 40 and SCL on pin 41. Direction buttons move, `+` starts or restarts,
 and `-` returns to the carousel.
+
+## Ogre Smash! prototype
+
+The first playable prototype is a 45-second survival run. Smash a nearby car
+to turn it into a lightning pickup, collect the bolt to grow stronger, then
+use the charged attack to destroy a truck.
+
+| QwSTPad input | Action |
+| --- | --- |
+| `L` / `R` | Change lane |
+| `U` | Jump over cars and lakes |
+| `A` | Smash a nearby normal car |
+| `B` | Fire lightning at the nearest truck when charged |
+| `+` | Start or retry |
+| `-` | Return to the arcade carousel |
 
 ## Frogger
 
@@ -76,7 +93,7 @@ uv run --with pillow tools/render_frogger_screenshots.py
 With Presto connected over USB and `mpremote` available:
 
 ```sh
-mpremote cp main.py awesome_game.py random_maze.py frogger.py :
+mpremote cp main.py awesome_game.py random_maze.py frogger.py ogre_smash.py :
 mpremote reset
 ```
 
