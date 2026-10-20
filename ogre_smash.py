@@ -24,6 +24,7 @@ PLAYER_Y = 184
 LANE_CENTRES = (36, 92, 148, 204)
 JUMP_DURATION_MS = 1600
 POWER_DURATION_MS = 8000
+SCORE_FILE = "ogre_scores.txt"
 
 BLACK = display.create_pen(0, 0, 0)
 WHITE = display.create_pen(255, 255, 255)
@@ -42,6 +43,7 @@ BLUE_LIGHT = display.create_pen(80, 185, 255)
 YELLOW = display.create_pen(255, 230, 35)
 GREY = display.create_pen(115, 120, 135)
 DARK_GREY = display.create_pen(45, 48, 55)
+HOLE_EDGE = display.create_pen(105, 68, 42)
 
 MUSIC = (
     (262, 150), (0, 40), (330, 150), (0, 40),
@@ -160,9 +162,15 @@ def new_obstacle(kind, lane):
         }
     if kind == "truck":
         return {
-            "kind": kind, "lane": lane, "y": -58.0,
-            "width": 38, "height": 58, "colour": GREY,
+            "kind": kind, "lane": lane, "y": -38.0,
+            "width": 28, "height": 38, "colour": GREY,
             "speed_factor": random.choice((0.8, 0.95)),
+        }
+    if kind == "hole":
+        return {
+            "kind": kind, "lane": lane, "y": -46.0,
+            "width": 48, "height": 46, "colour": BLACK,
+            "speed_factor": 1.0,
         }
     return {
         "kind": "lake", "lane": lane, "y": -46.0,
@@ -210,15 +218,15 @@ def draw_truck(obstacle):
     display.set_pen(GREY)
     display.rectangle(x, y, obstacle["width"], obstacle["height"])
     display.set_pen(DARK_GREY)
-    display.rectangle(x + 4, y + 5, obstacle["width"] - 8, 18)
+    display.rectangle(x + 4, y + 5, obstacle["width"] - 8, 12)
     display.set_pen(RED)
     display.rectangle(x + 4, y + obstacle["height"] - 6, 7, 4)
     display.rectangle(x + obstacle["width"] - 11, y + obstacle["height"] - 6, 7, 4)
     display.set_pen(BLACK)
     display.rectangle(x - 3, y + 10, 5, 13)
     display.rectangle(x + obstacle["width"] - 2, y + 10, 5, 13)
-    display.rectangle(x - 3, y + obstacle["height"] - 22, 5, 13)
-    display.rectangle(x + obstacle["width"] - 2, y + obstacle["height"] - 22, 5, 13)
+    display.rectangle(x - 3, y + obstacle["height"] - 14, 5, 10)
+    display.rectangle(x + obstacle["width"] - 2, y + obstacle["height"] - 14, 5, 10)
 
 
 def draw_lake(obstacle, elapsed_ms):
@@ -230,6 +238,17 @@ def draw_lake(obstacle, elapsed_ms):
     wave = (elapsed_ms // 120) % 12
     for row in (9, 24, 39):
         display.rectangle(x + ((row + wave) % 14), y + row, 18, 3)
+
+
+def draw_hole(obstacle):
+    x = lane_x(obstacle["lane"], obstacle["width"])
+    y = int(obstacle["y"])
+    display.set_pen(HOLE_EDGE)
+    display.rectangle(x, y, obstacle["width"], obstacle["height"])
+    display.set_pen(BLACK)
+    display.rectangle(x + 5, y + 5, obstacle["width"] - 10, obstacle["height"] - 10)
+    display.set_pen(DARK_GREY)
+    display.rectangle(x + 10, y + 9, obstacle["width"] - 20, 4)
 
 
 def draw_powerup(powerup, elapsed_ms):
@@ -329,23 +348,75 @@ def draw_title():
     centre_text("OGRE SMASH!", 48, 3, OGRE_GLOW)
     centre_text("L/R MOVE   U JUMP", 92, 1)
     centre_text("A SMASH   B LIGHTNING", 111, 1)
-    centre_text("3 LIVES - SCORE BIG!", 131, 1, OGRE_GLOW)
+    centre_text("10 LIVES - SCORE BIG!", 131, 1, OGRE_GLOW)
     centre_text("+ START     - MENU", 147, 1, YELLOW)
 
 
-def draw_message(title, subtitle, score):
+def load_scores():
+    scores = []
+    try:
+        with open(SCORE_FILE, "r") as score_file:
+            for line in score_file:
+                try:
+                    scores.append(int(line.strip()))
+                except ValueError:
+                    pass
+    except OSError:
+        pass
+    return scores
+
+
+def record_score(score):
+    scores = load_scores()
+    rank = 1
+    for previous_score in scores:
+        if previous_score > score:
+            rank += 1
+
+    scores.append(score)
+    for left in range(len(scores)):
+        for right in range(left + 1, len(scores)):
+            if scores[right] > scores[left]:
+                scores[left], scores[right] = scores[right], scores[left]
+
+    scores = scores[:5]
+    try:
+        with open(SCORE_FILE, "w") as score_file:
+            for saved_score in scores:
+                score_file.write(str(saved_score) + "\n")
+    except OSError:
+        pass
+    return scores, rank
+
+
+def draw_leaderboard(game):
     display.set_pen(BLACK)
-    display.rectangle(12, 69, WIDTH - 24, 100)
-    centre_text(title, 82, 2, OGRE_GLOW)
-    centre_text("SCORE " + str(score), 116, 1)
-    centre_text(subtitle, 142, 1, YELLOW)
+    display.rectangle(12, 28, WIDTH - 24, 205)
+    centre_text("LEADERBOARD", 39, 2, OGRE_GLOW)
+    centre_text("FINAL SCORE " + str(game["score"]), 70, 1, YELLOW)
+
+    scores = game["leaderboard"] or []
+    for index in range(5):
+        y = 94 + (index * 20)
+        if index < len(scores):
+            highlight = index + 1 == game["leaderboard_rank"] and scores[index] == game["score"]
+            display.set_pen(OGRE_GLOW if highlight else WHITE)
+            display.text(str(index + 1) + ".", 55, y, WIDTH, 1)
+            display.text(str(scores[index]), 92, y, WIDTH, 1)
+        else:
+            display.set_pen(GREY)
+            display.text(str(index + 1) + ".  ---", 55, y, WIDTH, 1)
+
+    if game["leaderboard_rank"] > 5:
+        centre_text("YOUR RANK " + str(game["leaderboard_rank"]), 194, 1, OGRE_GLOW)
+    centre_text("+ RETRY     - MENU", 214, 1, YELLOW)
 
 
 def reset_game(controller):
-    controller.show_lives(3)
+    controller.show_lives(10)
     return {
         "lane": 1,
-        "lives": 3,
+        "lives": 10,
         "score": 0,
         "obstacles": [],
         "powerups": [],
@@ -360,6 +431,8 @@ def reset_game(controller):
         "notice": None,
         "notice_until": None,
         "truck_spawned": False,
+        "leaderboard": None,
+        "leaderboard_rank": None,
     }
 
 
@@ -368,11 +441,17 @@ def spawn_kind(elapsed_ms):
         return "car"
     roll = random.random()
     if elapsed_ms < 20000:
-        return "lake" if roll < 0.28 else "car"
-    if roll < 0.2:
+        if roll < 0.18:
+            return "lake"
+        if roll < 0.34:
+            return "hole"
+        return "car"
+    if roll < 0.15:
         return "truck"
-    if roll < 0.48:
+    if roll < 0.35:
         return "lake"
+    if roll < 0.53:
+        return "hole"
     return "car"
 
 
@@ -382,7 +461,7 @@ def smash_car(game, now, audio):
     target = None
     target_distance = HEIGHT
     for obstacle in game["obstacles"]:
-        if obstacle["kind"] != "car" or obstacle["lane"] != game["lane"]:
+        if obstacle["kind"] not in ("car", "truck") or obstacle["lane"] != game["lane"]:
             continue
         distance = abs((obstacle["y"] + obstacle["height"]) - PLAYER_Y)
         if obstacle["y"] > PLAYER_Y - 72 and obstacle["y"] < PLAYER_Y + 22 and distance < target_distance:
@@ -393,7 +472,7 @@ def smash_car(game, now, audio):
         game["obstacles"].remove(target)
         game["powerups"].append(new_powerup(target["lane"], target["y"]))
         game["score"] += 25
-        game["notice"] = "CAR SMASHED!"
+        game["notice"] = "VEHICLE SMASHED!"
         game["notice_until"] = time.ticks_add(now, 700)
 
 
@@ -554,7 +633,7 @@ def update_game(game, controller, audio, now, dt):
     if not invulnerable:
         for obstacle in game["obstacles"][:]:
             obstacle_x = lane_x(obstacle["lane"], obstacle["width"])
-            airborne = height > 6 and obstacle["kind"] != "truck"
+            airborne = height > 6
             if not airborne and overlaps(
                     player_x, player_y, player_size, player_size,
                     obstacle_x, obstacle["y"], obstacle["width"], obstacle["height"]):
@@ -580,8 +659,10 @@ def draw_game(game, now, elapsed_ms):
             draw_car(obstacle)
         elif obstacle["kind"] == "truck":
             draw_truck(obstacle)
-        else:
+        elif obstacle["kind"] == "lake":
             draw_lake(obstacle, elapsed_ms)
+        else:
+            draw_hole(obstacle)
 
     for powerup in game["powerups"]:
         draw_powerup(powerup, elapsed_ms)
@@ -644,12 +725,13 @@ def main():
             elapsed_ms = update_game(game, controller, audio, now, dt)
             draw_game(game, now, elapsed_ms)
             if game["lives"] <= 0:
+                game["leaderboard"], game["leaderboard_rank"] = record_score(game["score"])
                 state = "game_over"
                 audio.play(SOUND_GAME_OVER)
 
         elif state == "game_over":
             draw_game(game, now, time.ticks_diff(now, game["started"]))
-            draw_message("GAME OVER", "+ RETRY   - MENU", game["score"])
+            draw_leaderboard(game)
             if controller.pressed("+"):
                 game = reset_game(controller)
                 state = "playing"

@@ -10,7 +10,7 @@ QwSTPad on the board's Qw/ST (I2C) connector.
 - **Frogger** — cross traffic and ride platforms through four progressively
   faster themes: River, Night, Ice, and Lava. Game Over retries the current
   level rather than discarding level progress.
-- **Ogre Smash!** — score as many points as possible with three lives by
+- **Ogre Smash!** — score as many points as possible with ten lives by
   jumping lakes, smashing cars for lightning, and blasting traffic.
 
 All games use the QwSTPad at its default address (`0x21`) on I2C 0, with SDA
@@ -19,17 +19,19 @@ and `-` returns to the carousel.
 
 ## Ogre Smash! prototype
 
-Ogre Smash is an endless score attack with three lives. Traffic becomes faster
-and more frequent the longer the ogre survives. Smash a nearby car to turn it
-into a lightning pickup, collect the bolt to grow stronger, then fire up the
-current lane to destroy every car and truck the lightning hits. A looping
-chiptune and distinct jump, smash, pickup, lightning, damage, and Game Over
-sounds play through Presto's onboard piezo buzzer.
+Ogre Smash is an endless score attack with ten lives. Traffic becomes faster
+and more frequent the longer the ogre survives. Cars and trucks share the same
+footprint and can both be smashed. Lakes and road holes must be jumped. Smash
+a nearby vehicle to turn it into a lightning pickup, collect the bolt to grow
+stronger, then fire up the current lane to destroy every vehicle the lightning
+hits. After the tenth life, the final score is saved to a persistent top-five
+leaderboard. A looping chiptune and distinct jump, smash, pickup, lightning,
+damage, and Game Over sounds play through Presto's onboard piezo buzzer.
 
 | QwSTPad input | Action |
 | --- | --- |
 | `L` / `R` | Change lane |
-| `U` | Jump over cars and lakes |
+| `U` | Jump over vehicles, lakes, and road holes |
 | `A` | Smash a nearby normal car |
 | `B` | Fire lightning up the current lane when charged |
 | `+` | Start or retry |
