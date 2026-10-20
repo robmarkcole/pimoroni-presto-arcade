@@ -22,7 +22,9 @@ and `-` returns to the carousel.
 Ogre Smash is an endless score attack with three lives. Traffic becomes faster
 and more frequent the longer the ogre survives. Smash a nearby car to turn it
 into a lightning pickup, collect the bolt to grow stronger, then fire up the
-current lane to destroy the first car or truck the lightning hits.
+current lane to destroy every car and truck the lightning hits. A looping
+chiptune and distinct jump, smash, pickup, lightning, damage, and Game Over
+sounds play through Presto's onboard piezo buzzer.
 
 | QwSTPad input | Action |
 | --- | --- |

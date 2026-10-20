@@ -8,7 +8,7 @@ import time
 
 import machine
 from machine import I2C
-from presto import Presto
+from presto import Buzzer, Presto
 from qwstpad import ADDRESSES, QwSTPad
 
 
@@ -42,6 +42,74 @@ BLUE_LIGHT = display.create_pen(80, 185, 255)
 YELLOW = display.create_pen(255, 230, 35)
 GREY = display.create_pen(115, 120, 135)
 DARK_GREY = display.create_pen(45, 48, 55)
+
+MUSIC = (
+    (262, 150), (0, 40), (330, 150), (0, 40),
+    (392, 150), (0, 40), (523, 230), (0, 80),
+    (392, 150), (0, 40), (330, 150), (0, 40),
+    (294, 150), (330, 150), (392, 260), (0, 100),
+)
+SOUND_START = ((392, 70), (523, 90), (659, 120))
+SOUND_JUMP = ((440, 55), (587, 55), (784, 90))
+SOUND_SMASH = ((180, 55), (110, 100))
+SOUND_PICKUP = ((523, 55), (659, 55), (784, 55), (1047, 120))
+SOUND_LIGHTNING = ((1200, 40), (700, 40), (1500, 50), (520, 120))
+SOUND_DAMAGE = ((220, 100), (150, 120), (90, 180))
+SOUND_GAME_OVER = ((330, 160), (262, 180), (196, 320))
+SOUND_ERROR = ((110, 120),)
+
+
+class Audio:
+    def __init__(self):
+        self.buzzer = Buzzer(43)
+        self.current_frequency = None
+        self.effect = None
+        self.effect_index = 0
+        self.effect_deadline = None
+        self.music_index = 0
+        self.music_deadline = None
+
+    def set_frequency(self, frequency):
+        if frequency == self.current_frequency:
+            return
+        self.current_frequency = frequency
+        if frequency:
+            self.buzzer.set_tone(frequency, 0.22)
+        else:
+            self.buzzer.set_tone(-1)
+
+    def play(self, sequence):
+        self.effect = sequence
+        self.effect_index = 0
+        self.effect_deadline = None
+
+    def update(self, now):
+        if self.effect is not None:
+            if self.effect_deadline is None:
+                frequency, duration = self.effect[self.effect_index]
+                self.set_frequency(frequency)
+                self.effect_deadline = time.ticks_add(now, duration)
+            elif time.ticks_diff(now, self.effect_deadline) >= 0:
+                self.effect_index += 1
+                if self.effect_index >= len(self.effect):
+                    self.effect = None
+                    self.effect_deadline = None
+                    self.music_deadline = None
+                else:
+                    frequency, duration = self.effect[self.effect_index]
+                    self.set_frequency(frequency)
+                    self.effect_deadline = time.ticks_add(now, duration)
+            return
+
+        if self.music_deadline is None or time.ticks_diff(now, self.music_deadline) >= 0:
+            frequency, duration = MUSIC[self.music_index]
+            self.set_frequency(frequency)
+            self.music_deadline = time.ticks_add(now, duration)
+            self.music_index = (self.music_index + 1) % len(MUSIC)
+
+    def stop(self):
+        self.effect = None
+        self.set_frequency(0)
 
 
 class Controller:
@@ -308,8 +376,9 @@ def spawn_kind(elapsed_ms):
     return "car"
 
 
-def smash_car(game, now):
+def smash_car(game, now, audio):
     game["smash_until"] = time.ticks_add(now, 300)
+    audio.play(SOUND_SMASH)
     target = None
     target_distance = HEIGHT
     for obstacle in game["obstacles"]:
@@ -328,10 +397,11 @@ def smash_car(game, now):
         game["notice_until"] = time.ticks_add(now, 700)
 
 
-def fire_lightning(game, now, controller):
+def fire_lightning(game, now, controller, audio):
     if game["powered_until"] is None or time.ticks_diff(game["powered_until"], now) <= 0:
         game["notice"] = "GET A BOLT FIRST!"
         game["notice_until"] = time.ticks_add(now, 900)
+        audio.play(SOUND_ERROR)
         return
 
     targets = [
@@ -347,27 +417,40 @@ def fire_lightning(game, now, controller):
         game["lightning_until"] = time.ticks_add(now, 550)
         game["notice"] = "NO TARGET - BOLT SAVED"
         game["notice_until"] = time.ticks_add(now, 900)
+        audio.play(SOUND_LIGHTNING)
         return
 
     target = targets[0]
     for obstacle in targets[1:]:
-        if obstacle["y"] > target["y"]:
+        if obstacle["y"] < target["y"]:
             target = obstacle
-    game["obstacles"].remove(target)
+
+    points = 0
+    trucks = 0
+    for obstacle in targets:
+        game["obstacles"].remove(obstacle)
+        if obstacle["kind"] == "truck":
+            points += 100
+            trucks += 1
+        else:
+            points += 50
+
     game["lightning_target"] = target
     game["lightning_until"] = time.ticks_add(now, 550)
     game["powered_until"] = None
-    if target["kind"] == "truck":
-        game["score"] += 100
+    game["score"] += points
+    if len(targets) > 1:
+        game["notice"] = str(len(targets)) + " VEHICLES ZAPPED!"
+    elif trucks:
         game["notice"] = "TRUCK ZAPPED!"
     else:
-        game["score"] += 50
         game["notice"] = "CAR ZAPPED!"
     game["notice_until"] = time.ticks_add(now, 900)
+    audio.play(SOUND_LIGHTNING)
     controller.show_lives(game["lives"])
 
 
-def update_game(game, controller, now, dt):
+def update_game(game, controller, audio, now, dt):
     elapsed_ms = time.ticks_diff(now, game["started"])
     powered = game["powered_until"] is not None and time.ticks_diff(game["powered_until"], now) > 0
 
@@ -382,10 +465,11 @@ def update_game(game, controller, now, dt):
 
     if controller.pressed("U") and jump_height(now, game["jump_started"]) == 0:
         game["jump_started"] = now
+        audio.play(SOUND_JUMP)
     if controller.pressed("A"):
-        smash_car(game, now)
+        smash_car(game, now, audio)
     if controller.pressed("B"):
-        fire_lightning(game, now, controller)
+        fire_lightning(game, now, controller, audio)
 
     if game["jump_started"] is not None and time.ticks_diff(now, game["jump_started"]) >= JUMP_DURATION_MS:
         game["jump_started"] = None
@@ -460,6 +544,7 @@ def update_game(game, controller, now, dt):
             game["score"] += 50
             game["notice"] = "LIGHTNING READY!"
             game["notice_until"] = time.ticks_add(now, 900)
+            audio.play(SOUND_PICKUP)
             controller.pad.set_leds(0b1111)
             powered = True
 
@@ -480,6 +565,7 @@ def update_game(game, controller, now, dt):
                 game["powered_until"] = None
                 game["invulnerable_until"] = time.ticks_add(now, 1200)
                 controller.show_lives(game["lives"])
+                audio.play(SOUND_DAMAGE)
                 break
 
     return elapsed_ms
@@ -530,6 +616,7 @@ def main():
             centre_text("Connect it and reset", 127, 1)
             presto.update()
 
+    audio = Audio()
     state = "title"
     game = None
     last_tick = time.ticks_ms()
@@ -540,7 +627,9 @@ def main():
         last_tick = now
 
         controller.poll()
+        audio.update(now)
         if controller.pressed("-"):
+            audio.stop()
             controller.pad.clear_leds()
             machine.reset()
 
@@ -549,12 +638,14 @@ def main():
             if controller.pressed("+"):
                 game = reset_game(controller)
                 state = "playing"
+                audio.play(SOUND_START)
 
         elif state == "playing":
-            elapsed_ms = update_game(game, controller, now, dt)
+            elapsed_ms = update_game(game, controller, audio, now, dt)
             draw_game(game, now, elapsed_ms)
             if game["lives"] <= 0:
                 state = "game_over"
+                audio.play(SOUND_GAME_OVER)
 
         elif state == "game_over":
             draw_game(game, now, time.ticks_diff(now, game["started"]))
@@ -562,6 +653,7 @@ def main():
             if controller.pressed("+"):
                 game = reset_game(controller)
                 state = "playing"
+                audio.play(SOUND_START)
 
         presto.update()
         time.sleep(0.02)
@@ -573,4 +665,8 @@ finally:
     try:
         controller.pad.clear_leds()
     except (NameError, OSError):
+        pass
+    try:
+        audio.stop()
+    except NameError:
         pass
