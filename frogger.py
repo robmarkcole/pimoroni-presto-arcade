@@ -23,6 +23,7 @@ FROG_SIZE = 16
 HOME_COLUMNS = (0, 2, 4, 6, 8)
 LEVEL_SPEEDS = (1.0, 1.25, 1.55, 1.9)
 FINAL_LEVEL = len(LEVEL_SPEEDS)
+LEVEL_NAMES = ("RIVER", "NIGHT", "ICE", "LAVA")
 
 BLACK = display.create_pen(0, 0, 0)
 WHITE = display.create_pen(255, 255, 255)
@@ -39,6 +40,40 @@ RED = display.create_pen(235, 55, 55)
 CYAN = display.create_pen(50, 220, 235)
 ORANGE = display.create_pen(255, 135, 40)
 PINK = display.create_pen(245, 80, 170)
+
+LEVEL_THEMES = (
+    {
+        "grass": GRASS, "water": WATER, "road": ROAD, "median": MEDIAN,
+        "lane": YELLOW, "log": LOG, "log_light": LOG_LIGHT,
+    },
+    {
+        "grass": display.create_pen(20, 70, 75),
+        "water": display.create_pen(45, 20, 100),
+        "road": display.create_pen(20, 20, 35),
+        "median": display.create_pen(30, 75, 90),
+        "lane": CYAN,
+        "log": display.create_pen(100, 70, 160),
+        "log_light": display.create_pen(170, 130, 220),
+    },
+    {
+        "grass": display.create_pen(170, 215, 230),
+        "water": display.create_pen(75, 175, 225),
+        "road": display.create_pen(75, 105, 130),
+        "median": display.create_pen(205, 235, 240),
+        "lane": WHITE,
+        "log": display.create_pen(45, 115, 155),
+        "log_light": display.create_pen(175, 225, 250),
+    },
+    {
+        "grass": display.create_pen(45, 25, 25),
+        "water": display.create_pen(225, 45, 10),
+        "road": display.create_pen(70, 30, 35),
+        "median": display.create_pen(95, 45, 25),
+        "lane": display.create_pen(255, 185, 20),
+        "log": display.create_pen(45, 45, 45),
+        "log_light": display.create_pen(130, 90, 65),
+    },
+)
 
 
 def make_mover(row, x, width, speed, colour):
@@ -140,38 +175,40 @@ def reset_movers(level):
         mover["speed"] = mover["base_speed"] * multiplier
 
 
-def draw_background():
+def draw_background(level):
+    theme = LEVEL_THEMES[level - 1]
     display.set_pen(BLACK)
     display.clear()
 
-    display.set_pen(GRASS)
+    display.set_pen(theme["grass"])
     display.rectangle(0, row_y(0), WIDTH, CELL)
 
-    display.set_pen(WATER)
+    display.set_pen(theme["water"])
     display.rectangle(0, row_y(1), WIDTH, CELL * 3)
 
-    display.set_pen(MEDIAN)
+    display.set_pen(theme["median"])
     display.rectangle(0, row_y(4), WIDTH, CELL)
 
-    display.set_pen(ROAD)
+    display.set_pen(theme["road"])
     display.rectangle(0, row_y(5), WIDTH, CELL * 3)
 
-    display.set_pen(GRASS)
+    display.set_pen(theme["grass"])
     display.rectangle(0, row_y(8), WIDTH, CELL)
 
-    display.set_pen(YELLOW)
+    display.set_pen(theme["lane"])
     for x in range(0, WIDTH, 30):
         display.rectangle(x, row_y(6), 15, 2)
         display.rectangle(x, row_y(7), 15, 2)
 
 
-def draw_movers():
+def draw_movers(level):
+    theme = LEVEL_THEMES[level - 1]
     for log in logs:
         x = int(log["x"])
         y = row_y(log["row"]) + 4
-        display.set_pen(LOG)
+        display.set_pen(theme["log"])
         display.rectangle(x, y, log["width"], CELL - 8)
-        display.set_pen(LOG_LIGHT)
+        display.set_pen(theme["log_light"])
         display.rectangle(x + 5, y + 4, log["width"] - 10, 3)
 
     for vehicle in vehicles:
@@ -211,7 +248,7 @@ def draw_hud(score, lives, level):
     display.rectangle(0, 0, WIDTH, HUD_HEIGHT)
     display.set_pen(WHITE)
     display.text("SCORE " + str(score), 4, 5, WIDTH, 1)
-    display.text("LVL " + str(level), 112, 5, WIDTH, 1)
+    display.text("L" + str(level) + " " + LEVEL_NAMES[level - 1], 105, 5, WIDTH, 1)
     display.text("LIVES " + str(lives), 178, 5, WIDTH, 1)
 
 
@@ -285,7 +322,16 @@ def main():
                 reset_movers(level)
                 state = "playing"
                 controller.show_progress(0, lives)
-        elif state in ("won", "game_over"):
+        elif state == "game_over":
+            if controller.pressed("+"):
+                frog_x = 4 * CELL + 4
+                frog_row = 8
+                lives = 3
+                occupied_homes = set()
+                reset_movers(level)
+                state = "playing"
+                controller.show_progress(0, lives)
+        elif state == "won":
             if controller.pressed("+"):
                 frog_x = 4 * CELL + 4
                 frog_row = 8
@@ -352,8 +398,8 @@ def main():
                 if lives <= 0:
                     state = "game_over"
 
-        draw_background()
-        draw_movers()
+        draw_background(level)
+        draw_movers(level)
         draw_homes(occupied_homes)
         if state == "playing":
             draw_frog(frog_x, frog_row)
