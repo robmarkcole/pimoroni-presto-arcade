@@ -207,8 +207,9 @@ def draw_message(title, subtitle):
     display.set_pen(BLACK)
     display.rectangle(12, 82, WIDTH - 24, 76)
     display.set_pen(WHITE)
-    title_width = display.measure_text(title, 3)
-    display.text(title, (WIDTH - title_width) // 2, 94, WIDTH, 3)
+    title_scale = 2 if len(title) > 10 else 3
+    title_width = display.measure_text(title, title_scale)
+    display.text(title, (WIDTH - title_width) // 2, 98, WIDTH, title_scale)
     subtitle_width = display.measure_text(subtitle, 1)
     display.text(subtitle, (WIDTH - subtitle_width) // 2, 135, WIDTH, 1)
 
@@ -312,16 +313,11 @@ def main():
 
             elif frog_row == 0:
                 home = nearest_home(frog_x)
-                if home is None or home in occupied_homes:
-                    died = True
-                else:
+                if home is not None:
                     occupied_homes.add(home)
-                    score += 100
-                    frog_x = 4 * CELL + 4
-                    frog_row = 8
-                    controller.show_progress(len(occupied_homes), lives)
-                    if len(occupied_homes) == len(HOME_COLUMNS):
-                        state = "won"
+                score += 100
+                controller.show_progress(4, lives)
+                state = "won"
 
             if died:
                 lives -= 1
@@ -339,7 +335,7 @@ def main():
         draw_hud(score, lives)
 
         if state == "won":
-            draw_message("YOU WIN!", "+ PLAY AGAIN   - MENU")
+            draw_message("LEVEL COMPLETE", "+ PLAY AGAIN   - MENU")
         elif state == "game_over":
             draw_message("GAME OVER", "+ RETRY   - MENU")
 
