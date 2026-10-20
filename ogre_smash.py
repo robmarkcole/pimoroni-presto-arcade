@@ -265,6 +265,9 @@ def reset_game(controller):
         "invulnerable_until": None,
         "lightning_target": None,
         "lightning_until": None,
+        "notice": None,
+        "notice_until": None,
+        "truck_spawned": False,
     }
 
 
@@ -300,10 +303,18 @@ def smash_car(game):
 
 def fire_lightning(game, now, controller):
     if game["powered_until"] is None or time.ticks_diff(game["powered_until"], now) <= 0:
+        game["notice"] = "GET A BOLT FIRST!"
+        game["notice_until"] = time.ticks_add(now, 900)
         return
 
     trucks = [obstacle for obstacle in game["obstacles"] if obstacle["kind"] == "truck"]
     if not trucks:
+        game["lightning_target"] = {
+            "lane": game["lane"], "y": HUD_HEIGHT, "height": 1,
+        }
+        game["lightning_until"] = time.ticks_add(now, 550)
+        game["notice"] = "NO TRUCK - BOLT SAVED"
+        game["notice_until"] = time.ticks_add(now, 900)
         return
 
     target = trucks[0]
@@ -312,9 +323,11 @@ def fire_lightning(game, now, controller):
             target = truck
     game["obstacles"].remove(target)
     game["lightning_target"] = target
-    game["lightning_until"] = time.ticks_add(now, 350)
+    game["lightning_until"] = time.ticks_add(now, 550)
     game["powered_until"] = None
     game["score"] += 100
+    game["notice"] = "TRUCK SMASHED!"
+    game["notice_until"] = time.ticks_add(now, 900)
     controller.show_lives(game["lives"])
 
 
@@ -343,7 +356,11 @@ def update_game(game, controller, now, dt):
 
     spawn_interval = max(680, 1250 - (elapsed_ms // 70))
     if time.ticks_diff(now, game["last_spawn"]) >= spawn_interval:
-        kind = spawn_kind(elapsed_ms)
+        if elapsed_ms >= 16000 and not game["truck_spawned"]:
+            kind = "truck"
+            game["truck_spawned"] = True
+        else:
+            kind = spawn_kind(elapsed_ms)
         lane = random.randrange(len(LANE_CENTRES))
         game["obstacles"].append(new_obstacle(kind, lane))
         game["last_spawn"] = now
@@ -373,6 +390,8 @@ def update_game(game, controller, now, dt):
             game["powerups"].remove(powerup)
             game["powered_until"] = time.ticks_add(now, POWER_DURATION_MS)
             game["score"] += 50
+            game["notice"] = "LIGHTNING READY!"
+            game["notice_until"] = time.ticks_add(now, 900)
             controller.pad.set_leds(0b1111)
             powered = True
 
@@ -423,6 +442,11 @@ def draw_game(game, now, elapsed_ms):
 
     remaining = max(0, (LEVEL_DURATION_MS - elapsed_ms + 999) // 1000)
     draw_hud(game["score"], game["lives"], powered, remaining)
+
+    if game["notice_until"] is not None and time.ticks_diff(game["notice_until"], now) > 0:
+        display.set_pen(BLACK)
+        display.rectangle(18, HUD_HEIGHT + 3, WIDTH - 36, 18)
+        centre_text(game["notice"], HUD_HEIGHT + 7, 1, YELLOW)
 
 
 def main():
