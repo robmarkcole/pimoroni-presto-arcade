@@ -22,7 +22,6 @@ WIDTH, HEIGHT = display.get_bounds()
 HUD_HEIGHT = 24
 PLAYER_Y = 184
 LANE_CENTRES = (36, 92, 148, 204)
-LEVEL_DURATION_MS = 45000
 JUMP_DURATION_MS = 800
 POWER_DURATION_MS = 8000
 
@@ -207,6 +206,23 @@ def draw_ogre(lane, height, powered, visible=True):
     display.rectangle(x + 4, y + size - 12, size - 8, 7)
 
 
+def draw_smash_arm(lane, height, powered):
+    size = 32 if powered else 24
+    centre_x = LANE_CENTRES[lane]
+    ogre_y = PLAYER_Y - height
+    arm_width = 9 if powered else 7
+    arm_length = 30 if powered else 24
+
+    display.set_pen(OGRE_GLOW if powered else OGRE)
+    display.rectangle(centre_x - (arm_width // 2), ogre_y - arm_length + 7,
+                      arm_width, arm_length)
+    display.rectangle(centre_x - 8, ogre_y - arm_length, 16, 11)
+    display.set_pen(OGRE_DARK)
+    display.rectangle(centre_x - 6, ogre_y - arm_length + 2, 3, 5)
+    display.rectangle(centre_x - 1, ogre_y - arm_length, 3, 6)
+    display.rectangle(centre_x + 4, ogre_y - arm_length + 2, 3, 5)
+
+
 def draw_lightning_flash(target, elapsed_ms):
     if target is None:
         return
@@ -220,13 +236,13 @@ def draw_lightning_flash(target, elapsed_ms):
                      points[index + 1][0], points[index + 1][1], 4)
 
 
-def draw_hud(score, lives, powered, remaining_seconds):
+def draw_hud(score, lives, powered, elapsed_seconds):
     display.set_pen(BLACK)
     display.rectangle(0, 0, WIDTH, HUD_HEIGHT)
     display.set_pen(WHITE)
     display.text("S " + str(score), 3, 5, WIDTH, 1)
     display.text("L " + str(lives), 76, 5, WIDTH, 1)
-    display.text("T " + str(remaining_seconds), 123, 5, WIDTH, 1)
+    display.text("T " + str(elapsed_seconds), 123, 5, WIDTH, 1)
     display.set_pen(YELLOW if powered else GREY)
     display.text("BOLT" if powered else "----", 188, 5, WIDTH, 1)
 
@@ -239,7 +255,8 @@ def draw_title():
     centre_text("OGRE SMASH!", 48, 3, OGRE_GLOW)
     centre_text("L/R MOVE   U JUMP", 92, 1)
     centre_text("A SMASH   B LIGHTNING", 111, 1)
-    centre_text("+ START     - MENU", 137, 1, YELLOW)
+    centre_text("3 LIVES - SCORE BIG!", 131, 1, OGRE_GLOW)
+    centre_text("+ START     - MENU", 147, 1, YELLOW)
 
 
 def draw_message(title, subtitle, score):
@@ -265,6 +282,7 @@ def reset_game(controller):
         "invulnerable_until": None,
         "lightning_target": None,
         "lightning_until": None,
+        "smash_until": None,
         "notice": None,
         "notice_until": None,
         "truck_spawned": False,
@@ -284,7 +302,8 @@ def spawn_kind(elapsed_ms):
     return "car"
 
 
-def smash_car(game):
+def smash_car(game, now):
+    game["smash_until"] = time.ticks_add(now, 300)
     target = None
     target_distance = HEIGHT
     for obstacle in game["obstacles"]:
@@ -299,6 +318,8 @@ def smash_car(game):
         game["obstacles"].remove(target)
         game["powerups"].append(new_powerup(target["lane"], target["y"]))
         game["score"] += 25
+        game["notice"] = "CAR SMASHED!"
+        game["notice_until"] = time.ticks_add(now, 700)
 
 
 def fire_lightning(game, now, controller):
@@ -307,26 +328,35 @@ def fire_lightning(game, now, controller):
         game["notice_until"] = time.ticks_add(now, 900)
         return
 
-    trucks = [obstacle for obstacle in game["obstacles"] if obstacle["kind"] == "truck"]
-    if not trucks:
+    targets = [
+        obstacle for obstacle in game["obstacles"]
+        if obstacle["kind"] in ("car", "truck")
+        and obstacle["lane"] == game["lane"]
+        and obstacle["y"] < PLAYER_Y
+    ]
+    if not targets:
         game["lightning_target"] = {
             "lane": game["lane"], "y": HUD_HEIGHT, "height": 1,
         }
         game["lightning_until"] = time.ticks_add(now, 550)
-        game["notice"] = "NO TRUCK - BOLT SAVED"
+        game["notice"] = "NO TARGET - BOLT SAVED"
         game["notice_until"] = time.ticks_add(now, 900)
         return
 
-    target = trucks[0]
-    for truck in trucks[1:]:
-        if truck["y"] > target["y"]:
-            target = truck
+    target = targets[0]
+    for obstacle in targets[1:]:
+        if obstacle["y"] > target["y"]:
+            target = obstacle
     game["obstacles"].remove(target)
     game["lightning_target"] = target
     game["lightning_until"] = time.ticks_add(now, 550)
     game["powered_until"] = None
-    game["score"] += 100
-    game["notice"] = "TRUCK SMASHED!"
+    if target["kind"] == "truck":
+        game["score"] += 100
+        game["notice"] = "TRUCK ZAPPED!"
+    else:
+        game["score"] += 50
+        game["notice"] = "CAR ZAPPED!"
     game["notice_until"] = time.ticks_add(now, 900)
     controller.show_lives(game["lives"])
 
@@ -347,14 +377,14 @@ def update_game(game, controller, now, dt):
     if controller.pressed("U") and jump_height(now, game["jump_started"]) == 0:
         game["jump_started"] = now
     if controller.pressed("A"):
-        smash_car(game)
+        smash_car(game, now)
     if controller.pressed("B"):
         fire_lightning(game, now, controller)
 
     if game["jump_started"] is not None and time.ticks_diff(now, game["jump_started"]) >= JUMP_DURATION_MS:
         game["jump_started"] = None
 
-    spawn_interval = max(680, 1250 - (elapsed_ms // 70))
+    spawn_interval = max(350, 1200 - (elapsed_ms // 50))
     if time.ticks_diff(now, game["last_spawn"]) >= spawn_interval:
         if elapsed_ms >= 16000 and not game["truck_spawned"]:
             kind = "truck"
@@ -365,7 +395,7 @@ def update_game(game, controller, now, dt):
         game["obstacles"].append(new_obstacle(kind, lane))
         game["last_spawn"] = now
 
-    speed = 48 + min(34, elapsed_ms / 1100)
+    speed = 48 + min(80, elapsed_ms / 800)
     for obstacle in game["obstacles"][:]:
         obstacle_speed = speed * (1.15 if obstacle["kind"] == "car" else 1.0)
         obstacle["y"] += obstacle_speed * dt
@@ -437,11 +467,13 @@ def draw_game(game, now, elapsed_ms):
                (elapsed_ms // 90) % 2 == 0)
     draw_ogre(game["lane"], jump_height(now, game["jump_started"]), powered, visible)
 
+    if game["smash_until"] is not None and time.ticks_diff(game["smash_until"], now) > 0:
+        draw_smash_arm(game["lane"], jump_height(now, game["jump_started"]), powered)
+
     if game["lightning_until"] is not None and time.ticks_diff(game["lightning_until"], now) > 0:
         draw_lightning_flash(game["lightning_target"], elapsed_ms)
 
-    remaining = max(0, (LEVEL_DURATION_MS - elapsed_ms + 999) // 1000)
-    draw_hud(game["score"], game["lives"], powered, remaining)
+    draw_hud(game["score"], game["lives"], powered, elapsed_ms // 1000)
 
     if game["notice_until"] is not None and time.ticks_diff(game["notice_until"], now) > 0:
         display.set_pen(BLACK)
@@ -485,20 +517,10 @@ def main():
             draw_game(game, now, elapsed_ms)
             if game["lives"] <= 0:
                 state = "game_over"
-            elif elapsed_ms >= LEVEL_DURATION_MS:
-                controller.pad.set_leds(0b1111)
-                state = "complete"
 
         elif state == "game_over":
             draw_game(game, now, time.ticks_diff(now, game["started"]))
             draw_message("GAME OVER", "+ RETRY   - MENU", game["score"])
-            if controller.pressed("+"):
-                game = reset_game(controller)
-                state = "playing"
-
-        elif state == "complete":
-            draw_game(game, now, LEVEL_DURATION_MS)
-            draw_message("EASY STREET CLEAR", "+ PLAY AGAIN   - MENU", game["score"])
             if controller.pressed("+"):
                 game = reset_game(controller)
                 state = "playing"

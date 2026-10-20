@@ -10,8 +10,8 @@ QwSTPad on the board's Qw/ST (I2C) connector.
 - **Frogger** — cross traffic and ride platforms through four progressively
   faster themes: River, Night, Ice, and Lava. Game Over retries the current
   level rather than discarding level progress.
-- **Ogre Smash!** — survive Easy Street by jumping lakes, smashing cars for
-  lightning power-ups, and blasting trucks. This is the single-level MVP.
+- **Ogre Smash!** — score as many points as possible with three lives by
+  jumping lakes, smashing cars for lightning, and blasting traffic.
 
 All games use the QwSTPad at its default address (`0x21`) on I2C 0, with SDA
 on pin 40 and SCL on pin 41. Direction buttons move, `+` starts or restarts,
@@ -19,16 +19,17 @@ and `-` returns to the carousel.
 
 ## Ogre Smash! prototype
 
-The first playable prototype is a 45-second survival run. Smash a nearby car
-to turn it into a lightning pickup, collect the bolt to grow stronger, then
-use the charged attack to destroy a truck.
+Ogre Smash is an endless score attack with three lives. Traffic becomes faster
+and more frequent the longer the ogre survives. Smash a nearby car to turn it
+into a lightning pickup, collect the bolt to grow stronger, then fire up the
+current lane to destroy the first car or truck the lightning hits.
 
 | QwSTPad input | Action |
 | --- | --- |
 | `L` / `R` | Change lane |
 | `U` | Jump over cars and lakes |
 | `A` | Smash a nearby normal car |
-| `B` | Fire lightning at the nearest truck when charged |
+| `B` | Fire lightning up the current lane when charged |
 | `+` | Start or retry |
 | `-` | Return to the arcade carousel |
 
