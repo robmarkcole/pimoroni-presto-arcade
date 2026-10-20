@@ -22,7 +22,7 @@ WIDTH, HEIGHT = display.get_bounds()
 HUD_HEIGHT = 24
 PLAYER_Y = 184
 LANE_CENTRES = (36, 92, 148, 204)
-JUMP_DURATION_MS = 800
+JUMP_DURATION_MS = 1600
 POWER_DURATION_MS = 8000
 
 BLACK = display.create_pen(0, 0, 0)
@@ -88,15 +88,17 @@ def new_obstacle(kind, lane):
             "kind": kind, "lane": lane, "y": -38.0,
             "width": 28, "height": 38,
             "colour": random.choice((RED, ORANGE, CYAN, PURPLE)),
+            "speed_factor": random.choice((0.85, 1.0, 1.15, 1.3)),
         }
     if kind == "truck":
         return {
             "kind": kind, "lane": lane, "y": -58.0,
             "width": 38, "height": 58, "colour": GREY,
+            "speed_factor": random.choice((0.8, 0.95)),
         }
     return {
         "kind": "lake", "lane": lane, "y": -46.0,
-        "width": 48, "height": 46, "colour": BLUE,
+        "width": 48, "height": 46, "colour": BLUE, "speed_factor": 1.0,
     }
 
 
@@ -124,6 +126,10 @@ def draw_car(obstacle):
     display.rectangle(x, y, obstacle["width"], obstacle["height"])
     display.set_pen(BLACK)
     display.rectangle(x + 5, y + 7, obstacle["width"] - 10, 10)
+    if obstacle["speed_factor"] > 1.1:
+        display.set_pen(YELLOW)
+        display.rectangle(x + (obstacle["width"] // 2) - 2, y + 19, 4, 13)
+    display.set_pen(BLACK)
     display.rectangle(x - 2, y + 6, 4, 9)
     display.rectangle(x + obstacle["width"] - 2, y + 6, 4, 9)
     display.rectangle(x - 2, y + obstacle["height"] - 15, 4, 9)
@@ -177,7 +183,7 @@ def jump_height(now, jump_started):
     elapsed = time.ticks_diff(now, jump_started)
     if elapsed < 0 or elapsed >= JUMP_DURATION_MS:
         return 0
-    return int(math.sin((elapsed / JUMP_DURATION_MS) * math.pi) * 34)
+    return int(math.sin((elapsed / JUMP_DURATION_MS) * math.pi) * 40)
 
 
 def draw_ogre(lane, height, powered, visible=True):
@@ -236,13 +242,13 @@ def draw_lightning_flash(target, elapsed_ms):
                      points[index + 1][0], points[index + 1][1], 4)
 
 
-def draw_hud(score, lives, powered, elapsed_seconds):
+def draw_hud(score, lives, powered):
     display.set_pen(BLACK)
     display.rectangle(0, 0, WIDTH, HUD_HEIGHT)
+    display.set_pen(YELLOW)
+    display.text("SCORE " + str(score), 3, 2, 126, 2)
     display.set_pen(WHITE)
-    display.text("S " + str(score), 3, 5, WIDTH, 1)
-    display.text("L " + str(lives), 76, 5, WIDTH, 1)
-    display.text("T " + str(elapsed_seconds), 123, 5, WIDTH, 1)
+    display.text("LIVES " + str(lives), 133, 5, WIDTH, 1)
     display.set_pen(YELLOW if powered else GREY)
     display.text("BOLT" if powered else "----", 188, 5, WIDTH, 1)
 
@@ -388,20 +394,52 @@ def update_game(game, controller, now, dt):
     if time.ticks_diff(now, game["last_spawn"]) >= spawn_interval:
         if elapsed_ms >= 16000 and not game["truck_spawned"]:
             kind = "truck"
-            game["truck_spawned"] = True
         else:
             kind = spawn_kind(elapsed_ms)
-        lane = random.randrange(len(LANE_CENTRES))
-        game["obstacles"].append(new_obstacle(kind, lane))
+
+        available_lanes = []
+        for lane in range(len(LANE_CENTRES)):
+            blocked = False
+            for obstacle in game["obstacles"]:
+                if obstacle["lane"] == lane and obstacle["y"] < 70:
+                    blocked = True
+                    break
+            if not blocked:
+                available_lanes.append(lane)
+
+        if available_lanes:
+            lane = random.choice(available_lanes)
+            game["obstacles"].append(new_obstacle(kind, lane))
+            if kind == "truck":
+                game["truck_spawned"] = True
         game["last_spawn"] = now
 
-    speed = 48 + min(80, elapsed_ms / 800)
+    speed = 44 + min(100, elapsed_ms / 650)
     for obstacle in game["obstacles"][:]:
-        obstacle_speed = speed * (1.15 if obstacle["kind"] == "car" else 1.0)
+        obstacle_speed = speed * obstacle["speed_factor"]
         obstacle["y"] += obstacle_speed * dt
         if obstacle["y"] > HEIGHT + 8:
             game["obstacles"].remove(obstacle)
             game["score"] += 5
+
+    # Faster cars may catch slower traffic, but vehicles should queue rather
+    # than drawing on top of one another in the same lane.
+    for lane in range(len(LANE_CENTRES)):
+        vehicles = [
+            obstacle for obstacle in game["obstacles"]
+            if obstacle["lane"] == lane and obstacle["kind"] in ("car", "truck")
+        ]
+        for left in range(len(vehicles)):
+            for right in range(left + 1, len(vehicles)):
+                if vehicles[right]["y"] > vehicles[left]["y"]:
+                    vehicles[left], vehicles[right] = vehicles[right], vehicles[left]
+
+        for index in range(1, len(vehicles)):
+            ahead = vehicles[index - 1]
+            following = vehicles[index]
+            maximum_y = ahead["y"] - following["height"] - 8
+            if following["y"] > maximum_y:
+                following["y"] = maximum_y
 
     for powerup in game["powerups"][:]:
         powerup["y"] += speed * 0.65 * dt
@@ -431,7 +469,7 @@ def update_game(game, controller, now, dt):
     if not invulnerable:
         for obstacle in game["obstacles"][:]:
             obstacle_x = lane_x(obstacle["lane"], obstacle["width"])
-            airborne = height > 12 and obstacle["kind"] != "truck"
+            airborne = height > 6 and obstacle["kind"] != "truck"
             if not airborne and overlaps(
                     player_x, player_y, player_size, player_size,
                     obstacle_x, obstacle["y"], obstacle["width"], obstacle["height"]):
@@ -473,7 +511,7 @@ def draw_game(game, now, elapsed_ms):
     if game["lightning_until"] is not None and time.ticks_diff(game["lightning_until"], now) > 0:
         draw_lightning_flash(game["lightning_target"], elapsed_ms)
 
-    draw_hud(game["score"], game["lives"], powered, elapsed_ms // 1000)
+    draw_hud(game["score"], game["lives"], powered)
 
     if game["notice_until"] is not None and time.ticks_diff(game["notice_until"], now) > 0:
         display.set_pen(BLACK)
