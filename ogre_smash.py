@@ -59,6 +59,7 @@ SOUND_LIGHTNING = ((1200, 40), (700, 40), (1500, 50), (520, 120))
 SOUND_DAMAGE = ((220, 100), (150, 120), (90, 180))
 SOUND_GAME_OVER = ((330, 160), (262, 180), (196, 320))
 SOUND_ERROR = ((110, 120),)
+SOUND_DUCK = ((740, 70), (520, 110))
 
 
 class Audio:
@@ -162,8 +163,8 @@ def new_obstacle(kind, lane):
         }
     if kind == "truck":
         return {
-            "kind": kind, "lane": lane, "y": -38.0,
-            "width": 28, "height": 38, "colour": GREY,
+            "kind": kind, "lane": lane, "y": -58.0,
+            "width": 38, "height": 58, "colour": GREY,
             "speed_factor": random.choice((0.8, 0.95)),
         }
     if kind == "hole":
@@ -180,6 +181,21 @@ def new_obstacle(kind, lane):
 
 def new_powerup(lane, y):
     return {"lane": lane, "y": float(y), "width": 18, "height": 22}
+
+
+def new_duck_crossing():
+    direction = random.choice((-1, 1))
+    return {
+        "x": -28.0 if direction > 0 else WIDTH + 28.0,
+        "y": PLAYER_Y + 8,
+        "direction": direction,
+        "speed": random.randint(42, 62),
+        "hit": False,
+    }
+
+
+def duck_x(crossing, index):
+    return crossing["x"] - (crossing["direction"] * index * 19)
 
 
 def draw_road(elapsed_ms):
@@ -262,6 +278,25 @@ def draw_powerup(powerup, elapsed_ms):
         (x + 10, y), (x + 3, y + 12), (x + 9, y + 12),
         (x + 6, y + 22), (x + 16, y + 8), (x + 10, y + 8),
     ])
+
+
+def draw_ducks(crossing):
+    y = int(crossing["y"])
+    direction = crossing["direction"]
+    for index in range(3):
+        x = int(duck_x(crossing, index))
+        display.set_pen(YELLOW)
+        display.rectangle(x, y + 3, 13, 8)
+        head_x = x + 9 if direction > 0 else x - 3
+        display.rectangle(head_x, y, 7, 7)
+        display.set_pen(ORANGE)
+        beak_x = head_x + 7 if direction > 0 else head_x - 3
+        display.rectangle(beak_x, y + 3, 3, 3)
+        display.rectangle(x + 3, y + 11, 2, 3)
+        display.rectangle(x + 9, y + 11, 2, 3)
+        display.set_pen(BLACK)
+        eye_x = head_x + 4 if direction > 0 else head_x + 1
+        display.pixel(eye_x, y + 2)
 
 
 def jump_height(now, jump_started):
@@ -391,37 +426,38 @@ def record_score(score):
 
 def draw_leaderboard(game):
     display.set_pen(BLACK)
-    display.rectangle(12, 28, WIDTH - 24, 205)
-    centre_text("LEADERBOARD", 39, 2, OGRE_GLOW)
-    centre_text("FINAL SCORE " + str(game["score"]), 70, 1, YELLOW)
+    display.rectangle(8, 24, WIDTH - 16, 214)
+    centre_text("LEADERBOARD", 32, 2, OGRE_GLOW)
+    centre_text("FINAL " + str(game["score"]), 59, 2, YELLOW)
 
     scores = game["leaderboard"] or []
     for index in range(5):
-        y = 94 + (index * 20)
+        y = 88 + (index * 24)
         if index < len(scores):
             highlight = index + 1 == game["leaderboard_rank"] and scores[index] == game["score"]
             display.set_pen(OGRE_GLOW if highlight else WHITE)
-            display.text(str(index + 1) + ".", 55, y, WIDTH, 1)
-            display.text(str(scores[index]), 92, y, WIDTH, 1)
+            display.text(str(index + 1) + ".", 42, y, WIDTH, 2)
+            display.text(str(scores[index]), 88, y, WIDTH, 2)
         else:
             display.set_pen(GREY)
-            display.text(str(index + 1) + ".  ---", 55, y, WIDTH, 1)
+            display.text(str(index + 1) + ".  ---", 42, y, WIDTH, 2)
 
-    if game["leaderboard_rank"] > 5:
-        centre_text("YOUR RANK " + str(game["leaderboard_rank"]), 194, 1, OGRE_GLOW)
-    centre_text("+ RETRY     - MENU", 214, 1, YELLOW)
+    centre_text("+ RETRY     - MENU", 220, 1, YELLOW)
 
 
 def reset_game(controller):
     controller.show_lives(10)
+    now = time.ticks_ms()
     return {
         "lane": 1,
         "lives": 10,
         "score": 0,
         "obstacles": [],
         "powerups": [],
-        "started": time.ticks_ms(),
-        "last_spawn": time.ticks_ms(),
+        "ducks": [],
+        "started": now,
+        "last_spawn": now,
+        "next_duck": time.ticks_add(now, random.randint(10000, 17000)),
         "jump_started": None,
         "powered_until": None,
         "invulnerable_until": None,
@@ -471,8 +507,12 @@ def smash_car(game, now, audio):
     if target is not None:
         game["obstacles"].remove(target)
         game["powerups"].append(new_powerup(target["lane"], target["y"]))
-        game["score"] += 25
-        game["notice"] = "VEHICLE SMASHED!"
+        if target["kind"] == "truck":
+            game["score"] += 75
+            game["notice"] = "LONG TRUCK +75!"
+        else:
+            game["score"] += 25
+            game["notice"] = "CAR SMASHED +25!"
         game["notice_until"] = time.ticks_add(now, 700)
 
 
@@ -583,7 +623,7 @@ def update_game(game, controller, audio, now, dt):
         obstacle["y"] += obstacle_speed * dt
         if obstacle["y"] > HEIGHT + 8:
             game["obstacles"].remove(obstacle)
-            game["score"] += 5
+            game["score"] += 10 if obstacle["kind"] == "truck" else 5
 
     # Faster cars may catch slower traffic, but vehicles should queue rather
     # than drawing on top of one another in the same lane.
@@ -604,6 +644,19 @@ def update_game(game, controller, audio, now, dt):
             if following["y"] > maximum_y:
                 following["y"] = maximum_y
 
+    if time.ticks_diff(now, game["next_duck"]) >= 0:
+        game["ducks"].append(new_duck_crossing())
+        game["next_duck"] = time.ticks_add(now, random.randint(12000, 22000))
+        game["notice"] = "DUCK CROSSING!"
+        game["notice_until"] = time.ticks_add(now, 1100)
+        audio.play(SOUND_DUCK)
+
+    for crossing in game["ducks"][:]:
+        crossing["x"] += crossing["direction"] * crossing["speed"] * dt
+        if ((crossing["direction"] > 0 and crossing["x"] > WIDTH + 60) or
+                (crossing["direction"] < 0 and crossing["x"] < -60)):
+            game["ducks"].remove(crossing)
+
     for powerup in game["powerups"][:]:
         powerup["y"] += speed * 0.65 * dt
         if powerup["y"] > HEIGHT:
@@ -613,6 +666,21 @@ def update_game(game, controller, audio, now, dt):
     player_size = 32 if powered else 24
     player_x = lane_x(game["lane"], player_size)
     player_y = PLAYER_Y - height
+
+    if height <= 6:
+        for crossing in game["ducks"]:
+            if crossing["hit"]:
+                continue
+            for index in range(3):
+                x = duck_x(crossing, index)
+                if overlaps(player_x, player_y, player_size, player_size,
+                            x - 3, crossing["y"], 20, 14):
+                    crossing["hit"] = True
+                    game["score"] = max(0, game["score"] - 50)
+                    game["notice"] = "DUCK HIT -50!"
+                    game["notice_until"] = time.ticks_add(now, 900)
+                    audio.play(SOUND_ERROR)
+                    break
 
     for powerup in game["powerups"][:]:
         power_x = lane_x(powerup["lane"], powerup["width"])
@@ -666,6 +734,9 @@ def draw_game(game, now, elapsed_ms):
 
     for powerup in game["powerups"]:
         draw_powerup(powerup, elapsed_ms)
+
+    for crossing in game["ducks"]:
+        draw_ducks(crossing)
 
     visible = (game["invulnerable_until"] is None or
                time.ticks_diff(game["invulnerable_until"], now) <= 0 or

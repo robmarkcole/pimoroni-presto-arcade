@@ -20,13 +20,16 @@ and `-` returns to the carousel.
 ## Ogre Smash! prototype
 
 Ogre Smash is an endless score attack with ten lives. Traffic becomes faster
-and more frequent the longer the ogre survives. Cars and trucks share the same
-footprint and can both be smashed. Lakes and road holes must be jumped. Smash
-a nearby vehicle to turn it into a lightning pickup, collect the bolt to grow
+and more frequent the longer the ogre survives. Normal cars are quick targets;
+long trucks are harder to avoid but award more points. Both can be smashed,
+jumped, or zapped. Lakes and road holes must be jumped. Occasional duck flocks
+cross the road—hitting one deducts 50 points without costing a life. Smash a
+nearby vehicle to turn it into a lightning pickup, collect the bolt to grow
 stronger, then fire up the current lane to destroy every vehicle the lightning
-hits. After the tenth life, the final score is saved to a persistent top-five
-leaderboard. A looping chiptune and distinct jump, smash, pickup, lightning,
-damage, and Game Over sounds play through Presto's onboard piezo buzzer.
+hits. After the tenth life, the final score is saved to a large-print,
+persistent top-five leaderboard. A looping chiptune and distinct jump, smash,
+pickup, lightning, damage, and Game Over sounds play through Presto's onboard
+piezo buzzer.
 
 | QwSTPad input | Action |
 | --- | --- |
