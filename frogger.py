@@ -72,7 +72,10 @@ logs = [
 class Controller:
     def __init__(self):
         self.pad = QwSTPad(I2C(**I2C_PINS), I2C_ADDRESS)
-        self.previous = self.pad.read_buttons()
+        buttons = self.pad.read_buttons()
+        # QwSTPad reuses and mutates one OrderedDict for every read, so retain
+        # a value snapshot rather than a reference to the driver's live state.
+        self.previous = {name: buttons[name] for name in buttons}
         self.events = {}
         self.held_since = {}
         self.last_repeat = {}
@@ -97,7 +100,7 @@ class Controller:
                     self.events[name] = True
                     self.last_repeat[name] = now
 
-        self.previous = buttons
+        self.previous = {name: buttons[name] for name in buttons}
 
     def pressed(self, name):
         return self.events.get(name, False)
