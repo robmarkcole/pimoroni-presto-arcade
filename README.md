@@ -11,7 +11,7 @@ QwSTPad on the board's Qw/ST (I2C) connector.
   faster themes: River, Night, Ice, and Lava. Game Over retries the current
   level rather than discarding level progress.
 - **Ogre Smash!** — score as many points as possible with ten lives by
-  jumping lakes, smashing cars for lightning, and blasting traffic.
+  jumping hazards, smashing traffic, and collecting lightning and mega bombs.
 
 All games use the QwSTPad at its default address (`0x21`) on I2C 0, with SDA
 on pin 40 and SCL on pin 41. Direction buttons move, `+` starts or restarts,
@@ -23,20 +23,22 @@ Ogre Smash is an endless score attack with ten lives. Traffic becomes faster
 and more frequent the longer the ogre survives. Normal cars are quick targets;
 long trucks are harder to avoid but award more points. Both can be smashed,
 jumped, or zapped. Lakes and road holes must be jumped. Occasional duck flocks
-cross the road—hitting one deducts 50 points without costing a life. Smash a
-nearby vehicle to turn it into a lightning pickup, collect the bolt to grow
-stronger, then fire up the current lane to destroy every vehicle the lightning
-hits. After the tenth life, the final score is saved to a large-print,
-persistent top-five leaderboard. A looping chiptune and distinct jump, smash,
-pickup, lightning, damage, and Game Over sounds play through Presto's onboard
-piezo buzzer.
+cross the road—hitting one deducts 50 points and leaves a blood splatter without
+costing a life. Smash a nearby vehicle to turn it into a lightning pickup,
+collect the bolt to grow stronger, then fire up the current lane to destroy
+every vehicle the lightning hits. Tanks appear later in the run. Jumping a tank
+makes it launch a dodgeable missile before self-destructing; destroying one
+instead arms a mega bomb that clears all cars and trucks on screen. After the
+tenth life, the final score is saved to a large-print, persistent top-five
+leaderboard. Distinct action sound effects play through Presto's onboard piezo
+buzzer; background music is disabled.
 
 | QwSTPad input | Action |
 | --- | --- |
 | `L` / `R` | Change lane |
 | `U` | Jump over vehicles, lakes, and road holes |
-| `A` | Smash a nearby normal car |
-| `B` | Fire lightning up the current lane when charged |
+| `A` | Smash a nearby car, truck, or tank |
+| `B` | Use a mega bomb when held; otherwise fire charged lightning |
 | `+` | Start or retry |
 | `-` | Return to the arcade carousel |
 

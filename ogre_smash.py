@@ -44,13 +44,11 @@ YELLOW = display.create_pen(255, 230, 35)
 GREY = display.create_pen(115, 120, 135)
 DARK_GREY = display.create_pen(45, 48, 55)
 HOLE_EDGE = display.create_pen(105, 68, 42)
+BLOOD = display.create_pen(170, 15, 20)
+BLOOD_DARK = display.create_pen(85, 5, 10)
+TANK_GREEN = display.create_pen(65, 105, 45)
+TANK_LIGHT = display.create_pen(105, 145, 65)
 
-MUSIC = (
-    (262, 150), (0, 40), (330, 150), (0, 40),
-    (392, 150), (0, 40), (523, 230), (0, 80),
-    (392, 150), (0, 40), (330, 150), (0, 40),
-    (294, 150), (330, 150), (392, 260), (0, 100),
-)
 SOUND_START = ((392, 70), (523, 90), (659, 120))
 SOUND_JUMP = ((440, 55), (587, 55), (784, 90))
 SOUND_SMASH = ((180, 55), (110, 100))
@@ -60,6 +58,9 @@ SOUND_DAMAGE = ((220, 100), (150, 120), (90, 180))
 SOUND_GAME_OVER = ((330, 160), (262, 180), (196, 320))
 SOUND_ERROR = ((110, 120),)
 SOUND_DUCK = ((740, 70), (520, 110))
+SOUND_TANK = ((120, 60), (160, 60), (210, 90))
+SOUND_MISSILE = ((900, 50), (700, 50), (500, 100))
+SOUND_BOMB = ((180, 80), (120, 100), (70, 260))
 
 
 class Audio:
@@ -69,8 +70,6 @@ class Audio:
         self.effect = None
         self.effect_index = 0
         self.effect_deadline = None
-        self.music_index = 0
-        self.music_deadline = None
 
     def set_frequency(self, frequency):
         if frequency == self.current_frequency:
@@ -97,18 +96,12 @@ class Audio:
                 if self.effect_index >= len(self.effect):
                     self.effect = None
                     self.effect_deadline = None
-                    self.music_deadline = None
+                    self.set_frequency(0)
                 else:
                     frequency, duration = self.effect[self.effect_index]
                     self.set_frequency(frequency)
                     self.effect_deadline = time.ticks_add(now, duration)
             return
-
-        if self.music_deadline is None or time.ticks_diff(now, self.music_deadline) >= 0:
-            frequency, duration = MUSIC[self.music_index]
-            self.set_frequency(frequency)
-            self.music_deadline = time.ticks_add(now, duration)
-            self.music_index = (self.music_index + 1) % len(MUSIC)
 
     def stop(self):
         self.effect = None
@@ -167,6 +160,12 @@ def new_obstacle(kind, lane):
             "width": 38, "height": 58, "colour": GREY,
             "speed_factor": random.choice((0.8, 0.95)),
         }
+    if kind == "tank":
+        return {
+            "kind": kind, "lane": lane, "y": -50.0,
+            "width": 40, "height": 50, "colour": TANK_GREEN,
+            "speed_factor": random.choice((0.68, 0.78)),
+        }
     if kind == "hole":
         return {
             "kind": kind, "lane": lane, "y": -46.0,
@@ -190,7 +189,7 @@ def new_duck_crossing():
         "y": PLAYER_Y + 8,
         "direction": direction,
         "speed": random.randint(42, 62),
-        "hit": False,
+        "alive": [True, True, True],
     }
 
 
@@ -245,6 +244,25 @@ def draw_truck(obstacle):
     display.rectangle(x + obstacle["width"] - 2, y + obstacle["height"] - 14, 5, 10)
 
 
+def draw_tank(obstacle):
+    x = lane_x(obstacle["lane"], obstacle["width"])
+    y = int(obstacle["y"])
+    display.set_pen(DARK_GREY)
+    display.rectangle(x, y + 5, obstacle["width"], obstacle["height"] - 10)
+    display.set_pen(TANK_GREEN)
+    display.rectangle(x + 4, y, obstacle["width"] - 8, obstacle["height"])
+    display.set_pen(TANK_LIGHT)
+    display.rectangle(x + 10, y + 16, obstacle["width"] - 20, 18)
+    display.set_pen(BLACK)
+    display.rectangle(x + 17, y + 20, 6, 10)
+    display.set_pen(TANK_LIGHT)
+    display.rectangle(x + 19, y - 10, 3, 28)
+    display.set_pen(BLACK)
+    for track_y in range(y + 8, y + obstacle["height"] - 6, 9):
+        display.rectangle(x + 1, track_y, 4, 5)
+        display.rectangle(x + obstacle["width"] - 5, track_y, 4, 5)
+
+
 def draw_lake(obstacle, elapsed_ms):
     x = lane_x(obstacle["lane"], obstacle["width"])
     y = int(obstacle["y"])
@@ -284,6 +302,8 @@ def draw_ducks(crossing):
     y = int(crossing["y"])
     direction = crossing["direction"]
     for index in range(3):
+        if not crossing["alive"][index]:
+            continue
         x = int(duck_x(crossing, index))
         display.set_pen(YELLOW)
         display.rectangle(x, y + 3, 13, 8)
@@ -297,6 +317,42 @@ def draw_ducks(crossing):
         display.set_pen(BLACK)
         eye_x = head_x + 4 if direction > 0 else head_x + 1
         display.pixel(eye_x, y + 2)
+
+
+def draw_splat(splat):
+    x = int(splat["x"])
+    y = int(splat["y"])
+    display.set_pen(BLOOD_DARK)
+    display.rectangle(x - 8, y - 3, 17, 7)
+    display.set_pen(BLOOD)
+    display.rectangle(x - 5, y - 6, 11, 13)
+    display.rectangle(x - 10, y, 5, 3)
+    display.rectangle(x + 6, y - 2, 6, 4)
+    display.rectangle(x - 2, y + 7, 4, 3)
+
+
+def draw_missile(missile):
+    x = int(missile["x"])
+    y = int(missile["y"])
+    display.set_pen(ORANGE)
+    display.rectangle(x - 3, y + 7, 7, 8)
+    display.set_pen(WHITE)
+    display.rectangle(x - 4, y - 5, 9, 14)
+    display.set_pen(RED)
+    display.rectangle(x - 2, y - 9, 5, 5)
+
+
+def draw_explosion(explosion, now):
+    age = max(0, time.ticks_diff(now, explosion["started"]))
+    radius = min(20, 5 + (age // 35))
+    x = int(explosion["x"])
+    y = int(explosion["y"])
+    display.set_pen(RED)
+    display.circle(x, y, radius)
+    display.set_pen(ORANGE)
+    display.circle(x, y, max(2, radius - 5))
+    display.set_pen(YELLOW)
+    display.circle(x, y, max(1, radius - 10))
 
 
 def jump_height(now, jump_started):
@@ -364,15 +420,16 @@ def draw_lightning_flash(target, elapsed_ms):
                      points[index + 1][0], points[index + 1][1], 4)
 
 
-def draw_hud(score, lives, powered):
+def draw_hud(score, lives, powered, has_bomb):
     display.set_pen(BLACK)
     display.rectangle(0, 0, WIDTH, HUD_HEIGHT)
     display.set_pen(YELLOW)
     display.text("SCORE " + str(score), 3, 2, 126, 2)
     display.set_pen(WHITE)
     display.text("LIVES " + str(lives), 133, 5, WIDTH, 1)
-    display.set_pen(YELLOW if powered else GREY)
-    display.text("BOLT" if powered else "----", 188, 5, WIDTH, 1)
+    display.set_pen(ORANGE if has_bomb else (YELLOW if powered else GREY))
+    display.text("BOMB" if has_bomb else ("BOLT" if powered else "----"),
+                 188, 5, WIDTH, 1)
 
 
 def draw_title():
@@ -382,7 +439,7 @@ def draw_title():
     display.rectangle(12, 35, WIDTH - 24, 126)
     centre_text("OGRE SMASH!", 48, 3, OGRE_GLOW)
     centre_text("L/R MOVE   U JUMP", 92, 1)
-    centre_text("A SMASH   B LIGHTNING", 111, 1)
+    centre_text("A SMASH   B POWER", 111, 1)
     centre_text("10 LIVES - SCORE BIG!", 131, 1, OGRE_GLOW)
     centre_text("+ START     - MENU", 147, 1, YELLOW)
 
@@ -455,11 +512,16 @@ def reset_game(controller):
         "obstacles": [],
         "powerups": [],
         "ducks": [],
+        "splats": [],
+        "missiles": [],
+        "explosions": [],
         "started": now,
         "last_spawn": now,
         "next_duck": time.ticks_add(now, random.randint(10000, 17000)),
         "jump_started": None,
         "powered_until": None,
+        "has_bomb": False,
+        "bomb_until": None,
         "invulnerable_until": None,
         "lightning_target": None,
         "lightning_until": None,
@@ -467,6 +529,7 @@ def reset_game(controller):
         "notice": None,
         "notice_until": None,
         "truck_spawned": False,
+        "tank_spawned": False,
         "leaderboard": None,
         "leaderboard_rank": None,
     }
@@ -482,13 +545,76 @@ def spawn_kind(elapsed_ms):
         if roll < 0.34:
             return "hole"
         return "car"
-    if roll < 0.15:
+    if roll < 0.09:
+        return "tank"
+    if roll < 0.22:
         return "truck"
-    if roll < 0.35:
+    if roll < 0.40:
         return "lake"
-    if roll < 0.53:
+    if roll < 0.58:
         return "hole"
     return "car"
+
+
+def award_tank_bomb(game, now, audio):
+    game["has_bomb"] = True
+    game["score"] += 150
+    game["notice"] = "TANK +150 - BOMB READY!"
+    game["notice_until"] = time.ticks_add(now, 1100)
+    audio.play(SOUND_TANK)
+
+
+def launch_missile(game, tank, player_x, player_y, now, audio):
+    start_x = LANE_CENTRES[tank["lane"]]
+    start_y = HEIGHT + 5
+    target_x = player_x + 12
+    target_y = player_y + 12
+    dx = target_x - start_x
+    dy = target_y - start_y
+    distance = max(1, math.sqrt((dx * dx) + (dy * dy)))
+    missile_speed = 125
+    game["missiles"].append({
+        "x": float(start_x), "y": float(start_y),
+        "vx": (dx / distance) * missile_speed,
+        "vy": (dy / distance) * missile_speed,
+        "armed_at": time.ticks_add(now, 250),
+    })
+    game["explosions"].append({
+        "x": LANE_CENTRES[tank["lane"]],
+        "y": tank["y"] + (tank["height"] // 2),
+        "started": now,
+    })
+    game["notice"] = "TANK MISSILE - DODGE!"
+    game["notice_until"] = time.ticks_add(now, 1100)
+    audio.play(SOUND_MISSILE)
+
+
+def use_mega_bomb(game, now, audio):
+    targets = [
+        obstacle for obstacle in game["obstacles"]
+        if obstacle["kind"] in ("car", "truck")
+    ]
+    if not targets:
+        game["notice"] = "NO TRAFFIC - BOMB SAVED"
+        game["notice_until"] = time.ticks_add(now, 900)
+        audio.play(SOUND_ERROR)
+        return
+
+    points = 0
+    for obstacle in targets:
+        game["obstacles"].remove(obstacle)
+        points += 100 if obstacle["kind"] == "truck" else 50
+        game["explosions"].append({
+            "x": LANE_CENTRES[obstacle["lane"]],
+            "y": obstacle["y"] + (obstacle["height"] // 2),
+            "started": now,
+        })
+    game["has_bomb"] = False
+    game["bomb_until"] = time.ticks_add(now, 600)
+    game["score"] += points
+    game["notice"] = "MEGA BOMB " + str(len(targets)) + " VEHICLES!"
+    game["notice_until"] = time.ticks_add(now, 1100)
+    audio.play(SOUND_BOMB)
 
 
 def smash_car(game, now, audio):
@@ -497,7 +623,7 @@ def smash_car(game, now, audio):
     target = None
     target_distance = HEIGHT
     for obstacle in game["obstacles"]:
-        if obstacle["kind"] not in ("car", "truck") or obstacle["lane"] != game["lane"]:
+        if obstacle["kind"] not in ("car", "truck", "tank") or obstacle["lane"] != game["lane"]:
             continue
         distance = abs((obstacle["y"] + obstacle["height"]) - PLAYER_Y)
         if obstacle["y"] > PLAYER_Y - 72 and obstacle["y"] < PLAYER_Y + 22 and distance < target_distance:
@@ -506,6 +632,15 @@ def smash_car(game, now, audio):
 
     if target is not None:
         game["obstacles"].remove(target)
+        if target["kind"] == "tank":
+            game["explosions"].append({
+                "x": LANE_CENTRES[target["lane"]],
+                "y": target["y"] + (target["height"] // 2),
+                "started": now,
+            })
+            award_tank_bomb(game, now, audio)
+            return
+
         game["powerups"].append(new_powerup(target["lane"], target["y"]))
         if target["kind"] == "truck":
             game["score"] += 75
@@ -525,7 +660,7 @@ def fire_lightning(game, now, controller, audio):
 
     targets = [
         obstacle for obstacle in game["obstacles"]
-        if obstacle["kind"] in ("car", "truck")
+        if obstacle["kind"] in ("car", "truck", "tank")
         and obstacle["lane"] == game["lane"]
         and obstacle["y"] < PLAYER_Y
     ]
@@ -546,11 +681,20 @@ def fire_lightning(game, now, controller, audio):
 
     points = 0
     trucks = 0
+    tanks = 0
     for obstacle in targets:
         game["obstacles"].remove(obstacle)
         if obstacle["kind"] == "truck":
             points += 100
             trucks += 1
+        elif obstacle["kind"] == "tank":
+            points += 150
+            tanks += 1
+            game["explosions"].append({
+                "x": LANE_CENTRES[obstacle["lane"]],
+                "y": obstacle["y"] + (obstacle["height"] // 2),
+                "started": now,
+            })
         else:
             points += 50
 
@@ -558,7 +702,11 @@ def fire_lightning(game, now, controller, audio):
     game["lightning_until"] = time.ticks_add(now, 550)
     game["powered_until"] = None
     game["score"] += points
-    if len(targets) > 1:
+    if tanks:
+        game["has_bomb"] = True
+    if tanks:
+        game["notice"] = "TANK ZAPPED - BOMB READY!"
+    elif len(targets) > 1:
         game["notice"] = str(len(targets)) + " VEHICLES ZAPPED!"
     elif trucks:
         game["notice"] = "TRUCK ZAPPED!"
@@ -588,7 +736,10 @@ def update_game(game, controller, audio, now, dt):
     if controller.pressed("A"):
         smash_car(game, now, audio)
     if controller.pressed("B"):
-        fire_lightning(game, now, controller, audio)
+        if game["has_bomb"]:
+            use_mega_bomb(game, now, audio)
+        else:
+            fire_lightning(game, now, controller, audio)
 
     if game["jump_started"] is not None and time.ticks_diff(now, game["jump_started"]) >= JUMP_DURATION_MS:
         game["jump_started"] = None
@@ -597,6 +748,8 @@ def update_game(game, controller, audio, now, dt):
     if time.ticks_diff(now, game["last_spawn"]) >= spawn_interval:
         if elapsed_ms >= 16000 and not game["truck_spawned"]:
             kind = "truck"
+        elif elapsed_ms >= 26000 and not game["tank_spawned"]:
+            kind = "tank"
         else:
             kind = spawn_kind(elapsed_ms)
 
@@ -615,6 +768,8 @@ def update_game(game, controller, audio, now, dt):
             game["obstacles"].append(new_obstacle(kind, lane))
             if kind == "truck":
                 game["truck_spawned"] = True
+            elif kind == "tank":
+                game["tank_spawned"] = True
         game["last_spawn"] = now
 
     speed = 44 + min(100, elapsed_ms / 650)
@@ -623,14 +778,19 @@ def update_game(game, controller, audio, now, dt):
         obstacle["y"] += obstacle_speed * dt
         if obstacle["y"] > HEIGHT + 8:
             game["obstacles"].remove(obstacle)
-            game["score"] += 10 if obstacle["kind"] == "truck" else 5
+            if obstacle["kind"] == "tank":
+                game["score"] += 15
+            elif obstacle["kind"] == "truck":
+                game["score"] += 10
+            else:
+                game["score"] += 5
 
     # Faster cars may catch slower traffic, but vehicles should queue rather
     # than drawing on top of one another in the same lane.
     for lane in range(len(LANE_CENTRES)):
         vehicles = [
             obstacle for obstacle in game["obstacles"]
-            if obstacle["lane"] == lane and obstacle["kind"] in ("car", "truck")
+            if obstacle["lane"] == lane and obstacle["kind"] in ("car", "truck", "tank")
         ]
         for left in range(len(vehicles)):
             for right in range(left + 1, len(vehicles)):
@@ -657,6 +817,15 @@ def update_game(game, controller, audio, now, dt):
                 (crossing["direction"] < 0 and crossing["x"] < -60)):
             game["ducks"].remove(crossing)
 
+    for splat in game["splats"][:]:
+        splat["y"] += speed * dt
+        if splat["y"] > HEIGHT + 12:
+            game["splats"].remove(splat)
+
+    for explosion in game["explosions"][:]:
+        if time.ticks_diff(now, explosion["started"]) > 650:
+            game["explosions"].remove(explosion)
+
     for powerup in game["powerups"][:]:
         powerup["y"] += speed * 0.65 * dt
         if powerup["y"] > HEIGHT:
@@ -669,18 +838,34 @@ def update_game(game, controller, audio, now, dt):
 
     if height <= 6:
         for crossing in game["ducks"]:
-            if crossing["hit"]:
-                continue
             for index in range(3):
+                if not crossing["alive"][index]:
+                    continue
                 x = duck_x(crossing, index)
                 if overlaps(player_x, player_y, player_size, player_size,
                             x - 3, crossing["y"], 20, 14):
-                    crossing["hit"] = True
+                    crossing["alive"][index] = False
+                    game["splats"].append({
+                        "x": x + 6, "y": crossing["y"] + 7,
+                    })
                     game["score"] = max(0, game["score"] - 50)
                     game["notice"] = "DUCK HIT -50!"
                     game["notice_until"] = time.ticks_add(now, 900)
                     audio.play(SOUND_ERROR)
                     break
+
+    # Jumping a tank makes it fire once and self-destruct. Its missile travels
+    # toward the launch position, so a quick lane change can evade it.
+    if height > 6:
+        for obstacle in game["obstacles"][:]:
+            if obstacle["kind"] != "tank":
+                continue
+            obstacle_x = lane_x(obstacle["lane"], obstacle["width"])
+            if overlaps(player_x, player_y, player_size, player_size,
+                        obstacle_x, obstacle["y"], obstacle["width"], obstacle["height"]):
+                game["obstacles"].remove(obstacle)
+                launch_missile(game, obstacle, player_x, player_y, now, audio)
+                break
 
     for powerup in game["powerups"][:]:
         power_x = lane_x(powerup["lane"], powerup["width"])
@@ -697,6 +882,23 @@ def update_game(game, controller, audio, now, dt):
 
     invulnerable = (game["invulnerable_until"] is not None and
                     time.ticks_diff(game["invulnerable_until"], now) > 0)
+
+    for missile in game["missiles"][:]:
+        missile["x"] += missile["vx"] * dt
+        missile["y"] += missile["vy"] * dt
+        if missile["y"] < HUD_HEIGHT - 20 or missile["x"] < -20 or missile["x"] > WIDTH + 20:
+            game["missiles"].remove(missile)
+            continue
+        if (not invulnerable and time.ticks_diff(now, missile["armed_at"]) >= 0 and
+                overlaps(player_x, player_y, player_size, player_size,
+                         missile["x"] - 4, missile["y"] - 9, 9, 24)):
+            game["missiles"].remove(missile)
+            game["lives"] -= 1
+            game["invulnerable_until"] = time.ticks_add(now, 1200)
+            game["powered_until"] = None
+            controller.show_lives(game["lives"])
+            audio.play(SOUND_DAMAGE)
+            invulnerable = True
 
     if not invulnerable:
         for obstacle in game["obstacles"][:]:
@@ -722,11 +924,16 @@ def draw_game(game, now, elapsed_ms):
     powered = game["powered_until"] is not None and time.ticks_diff(game["powered_until"], now) > 0
     draw_road(elapsed_ms)
 
+    for splat in game["splats"]:
+        draw_splat(splat)
+
     for obstacle in game["obstacles"]:
         if obstacle["kind"] == "car":
             draw_car(obstacle)
         elif obstacle["kind"] == "truck":
             draw_truck(obstacle)
+        elif obstacle["kind"] == "tank":
+            draw_tank(obstacle)
         elif obstacle["kind"] == "lake":
             draw_lake(obstacle, elapsed_ms)
         else:
@@ -737,6 +944,12 @@ def draw_game(game, now, elapsed_ms):
 
     for crossing in game["ducks"]:
         draw_ducks(crossing)
+
+    for missile in game["missiles"]:
+        draw_missile(missile)
+
+    for explosion in game["explosions"]:
+        draw_explosion(explosion, now)
 
     visible = (game["invulnerable_until"] is None or
                time.ticks_diff(game["invulnerable_until"], now) <= 0 or
@@ -749,7 +962,14 @@ def draw_game(game, now, elapsed_ms):
     if game["lightning_until"] is not None and time.ticks_diff(game["lightning_until"], now) > 0:
         draw_lightning_flash(game["lightning_target"], elapsed_ms)
 
-    draw_hud(game["score"], game["lives"], powered)
+    if game["bomb_until"] is not None and time.ticks_diff(game["bomb_until"], now) > 0:
+        display.set_pen(YELLOW if (elapsed_ms // 70) % 2 else ORANGE)
+        display.rectangle(0, HUD_HEIGHT, WIDTH, 4)
+        display.rectangle(0, HEIGHT - 4, WIDTH, 4)
+        display.rectangle(0, HUD_HEIGHT, 4, HEIGHT - HUD_HEIGHT)
+        display.rectangle(WIDTH - 4, HUD_HEIGHT, 4, HEIGHT - HUD_HEIGHT)
+
+    draw_hud(game["score"], game["lives"], powered, game["has_bomb"])
 
     if game["notice_until"] is not None and time.ticks_diff(game["notice_until"], now) > 0:
         display.set_pen(BLACK)
