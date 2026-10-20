@@ -21,6 +21,8 @@ CELL = 24
 HUD_HEIGHT = 24
 FROG_SIZE = 16
 HOME_COLUMNS = (0, 2, 4, 6, 8)
+LEVEL_SPEEDS = (1.0, 1.25, 1.55, 1.9)
+FINAL_LEVEL = len(LEVEL_SPEEDS)
 
 BLACK = display.create_pen(0, 0, 0)
 WHITE = display.create_pen(255, 255, 255)
@@ -43,8 +45,10 @@ def make_mover(row, x, width, speed, colour):
     return {
         "row": row,
         "x": float(x),
+        "start_x": float(x),
         "width": width,
         "speed": float(speed),
+        "base_speed": float(speed),
         "colour": colour,
     }
 
@@ -129,6 +133,13 @@ def move_movers(movers, dt):
             mover["x"] = WIDTH
 
 
+def reset_movers(level):
+    multiplier = LEVEL_SPEEDS[level - 1]
+    for mover in vehicles + logs:
+        mover["x"] = mover["start_x"]
+        mover["speed"] = mover["base_speed"] * multiplier
+
+
 def draw_background():
     display.set_pen(BLACK)
     display.clear()
@@ -195,12 +206,13 @@ def draw_homes(occupied):
             display.rectangle(x + 3, row_y(0) + 3, CELL - 6, CELL - 6)
 
 
-def draw_hud(score, lives):
+def draw_hud(score, lives, level):
     display.set_pen(BLACK)
     display.rectangle(0, 0, WIDTH, HUD_HEIGHT)
     display.set_pen(WHITE)
     display.text("SCORE " + str(score), 4, 5, WIDTH, 1)
-    display.text("LIVES " + str(lives), 165, 5, WIDTH, 1)
+    display.text("LVL " + str(level), 112, 5, WIDTH, 1)
+    display.text("LIVES " + str(lives), 178, 5, WIDTH, 1)
 
 
 def draw_message(title, subtitle):
@@ -245,10 +257,12 @@ def main():
     frog_row = 8
     lives = 3
     score = 0
+    level = 1
     occupied_homes = set()
     state = "playing"
     last_tick = time.ticks_ms()
 
+    reset_movers(level)
     controller.show_progress(0, lives)
 
     while True:
@@ -262,16 +276,27 @@ def main():
             controller.pad.clear_leds()
             machine.reset()
 
-        if state != "playing":
+        if state == "level_complete":
+            if controller.pressed("+"):
+                frog_x = 4 * CELL + 4
+                frog_row = 8
+                level += 1
+                occupied_homes = set()
+                reset_movers(level)
+                state = "playing"
+                controller.show_progress(0, lives)
+        elif state in ("won", "game_over"):
             if controller.pressed("+"):
                 frog_x = 4 * CELL + 4
                 frog_row = 8
                 lives = 3
                 score = 0
+                level = 1
                 occupied_homes = set()
+                reset_movers(level)
                 state = "playing"
                 controller.show_progress(0, lives)
-        else:
+        elif state == "playing":
             move_movers(vehicles, dt)
             move_movers(logs, dt)
 
@@ -315,9 +340,9 @@ def main():
                 home = nearest_home(frog_x)
                 if home is not None:
                     occupied_homes.add(home)
-                score += 100
+                score += 100 * level
                 controller.show_progress(4, lives)
-                state = "won"
+                state = "won" if level == FINAL_LEVEL else "level_complete"
 
             if died:
                 lives -= 1
@@ -332,10 +357,12 @@ def main():
         draw_homes(occupied_homes)
         if state == "playing":
             draw_frog(frog_x, frog_row)
-        draw_hud(score, lives)
+        draw_hud(score, lives, level)
 
         if state == "won":
-            draw_message("LEVEL COMPLETE", "+ PLAY AGAIN   - MENU")
+            draw_message("YOU WIN!", "+ PLAY AGAIN   - MENU")
+        elif state == "level_complete":
+            draw_message("LEVEL " + str(level) + " COMPLETE", "+ NEXT LEVEL   - MENU")
         elif state == "game_over":
             draw_message("GAME OVER", "+ RETRY   - MENU")
 

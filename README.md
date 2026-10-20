@@ -7,7 +7,8 @@ QwSTPad on the board's Qw/ST (I2C) connector.
 
 - **Awesome Game** — dodge falling obstacles and collect treasure.
 - **Random Maze** — escape increasingly difficult generated mazes.
-- **Frogger** — cross traffic and ride logs into all five home bays.
+- **Frogger** — cross traffic and ride logs through four progressively faster
+  levels.
 
 All games use the QwSTPad at its default address (`0x21`) on I2C 0, with SDA
 on pin 40 and SCL on pin 41. Direction buttons move, `+` starts or restarts,
