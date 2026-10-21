@@ -52,6 +52,125 @@ RADIUS_Y = 30
 BLACK = display.create_pen(0, 0, 0)
 BACKGROUND = display.create_pen(255, 250, 240)
 
+ART_GREEN = display.create_pen(70, 205, 70)
+ART_GREEN_DARK = display.create_pen(25, 75, 35)
+ART_RED = display.create_pen(235, 55, 55)
+ART_PURPLE = display.create_pen(130, 65, 180)
+ART_CYAN = display.create_pen(45, 215, 235)
+ART_YELLOW = display.create_pen(255, 220, 45)
+ART_ORANGE = display.create_pen(245, 125, 35)
+ART_SKIN = display.create_pen(235, 175, 115)
+ART_BLUE = display.create_pen(45, 80, 190)
+
+
+GAME_ICON_ART = {
+    "ogre_smash.py": (
+        (
+            "..GG...GG..",
+            ".GGGGGGGGG.",
+            ".GGGGGGGGG.",
+            ".GDDGGGDDG.",
+            ".GGGGGGGGG.",
+            "GGGGGGGGGGG",
+            "GGGPPPPPGGG",
+            "GGGPPPPPGGG",
+            ".GGGGGGGGG.",
+            "..GG...GG..",
+            "..GG...GG..",
+        ),
+        {"G": ART_GREEN, "D": ART_GREEN_DARK, "P": ART_PURPLE},
+    ),
+    "zombie_escape.py": (
+        (
+            "....G......",
+            "...GGGGG...",
+            "..GGGGGGG..",
+            "..GRGGGRG..",
+            "..GGDGDGG..",
+            "..GGGGGGG..",
+            "...GGGGG...",
+            "...G...G...",
+            "..GG...GG..",
+            ".C.......C.",
+            "CCC.....CCC",
+        ),
+        {"G": ART_GREEN, "D": ART_GREEN_DARK, "R": ART_RED, "C": ART_CYAN},
+    ),
+    "frogger.py": (
+        (
+            ".GG.....GG.",
+            "GGGG...GGGG",
+            ".GGGGGGGGG.",
+            "..GDDGDDG..",
+            "..GGGGGGG..",
+            ".GGGGGGGGG.",
+            "GG.GGGGG.GG",
+            "...GGGGG...",
+            "..GG...GG..",
+            ".GG.....GG.",
+            "GG.......GG",
+        ),
+        {"G": ART_GREEN, "D": ART_GREEN_DARK},
+    ),
+    "random_maze.py": (
+        (
+            "MMMMMMMMMMM",
+            "M.....M...M",
+            "M.MMM.M.MEM",
+            "M.M...M.M.M",
+            "M.M.MMM.M.M",
+            "M...M...M.M",
+            "MMM.M.MMM.M",
+            "M...M.....M",
+            "M.MMMMMMM.M",
+            "M..P......M",
+            "MMMMMMMMMMM",
+        ),
+        {"M": ART_PURPLE, "E": ART_GREEN, "P": ART_YELLOW},
+    ),
+    "awesome_game.py": (
+        (
+            ".O.......O.",
+            "OOO.....OOO",
+            "...........",
+            "....RRR....",
+            "...RRRRR...",
+            "...SSSSS...",
+            "...DSSSD...",
+            "....BBB....",
+            "...BBBBB...",
+            "...B...B...",
+            "..YY...YY..",
+        ),
+        {"O": ART_ORANGE, "R": ART_RED, "S": ART_SKIN,
+         "D": ART_GREEN_DARK, "B": ART_BLUE, "Y": ART_YELLOW},
+    ),
+}
+
+
+def build_icon_art(file, pixel_size=4):
+    if file not in GAME_ICON_ART:
+        return []
+    pattern, palette = GAME_ICON_ART[file]
+    width = max(len(row) for row in pattern) * pixel_size
+    height = len(pattern) * pixel_size
+    left = -(width // 2)
+    top = -(height // 2)
+    layers = []
+    for symbol, pen in palette.items():
+        shape = Polygon()
+        used = False
+        for row, pixels in enumerate(pattern):
+            for column, value in enumerate(pixels):
+                if value == symbol:
+                    shape.rectangle(left + column * pixel_size,
+                                    top + row * pixel_size,
+                                    pixel_size, pixel_size)
+                    used = True
+        if used:
+            layers.append((pen, shape))
+    return layers
+
 # We do a clear and update here to stop the screen showing whatever is in the buffer.
 display.set_pen(BLACK)
 display.clear()
@@ -97,6 +216,7 @@ class Application:
         # Bit of filename formatting for scripts without a title in the header.
         self.name = " ".join([w[0].upper() + w[1:] for w in file[:-3].replace("_", " ").split()])
         self.description = ""
+        self.icon_art = build_icon_art(file)
 
         with open(file) as f:
             header = [f.readline().strip() for _ in range(3)]
@@ -182,7 +302,12 @@ class Application:
         vector.draw(self.bg)
         display.set_pen(self.color_fg)
         self.t.translate(0, 2)
-        vector.text(self.icon, 0, 0)
+        if self.icon_art:
+            for pen, shape in self.icon_art:
+                display.set_pen(pen)
+                vector.draw(shape)
+        else:
+            vector.text(self.icon, 0, 0)
 
         if selected:
             self.t.translate(0, -2)
