@@ -18,6 +18,8 @@ The no-build site source lives in [`docs/`](docs/).
   jumping hazards, smashing traffic, and collecting lightning and mega bombs.
 - **Zombie Escape** — collect every gem, evade pursuing zombies, and unlock
   the exit across three increasingly dangerous mazes.
+- **Rainbow Barrage** — arc rainbow missiles into destructible storm towers,
+  collapse their floors, dodge counter-fire, and charge a Spectrum Blast.
 
 All games use the QwSTPad at its default address (`0x21`) on I2C 0, with SDA
 on pin 40 and SCL on pin 41. Direction buttons move, `+` starts or restarts,
