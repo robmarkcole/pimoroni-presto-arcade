@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Four tiny arcade games for Pimoroni Presto, all controlled by a QwSTPad over I2C.">
+  <title>Pimoroni Presto Arcade</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#content">Skip to content</a>
+  <header class="site-header">
+    <nav class="nav" aria-label="Main navigation">
+      <a class="brand" href="index.html">PRESTO//ARCADE</a>
+      <div class="nav-links">
+        <a href="#games">Games</a>
+        <a href="#hardware">Hardware</a>
+        <a href="#install">Install</a>
+        <a href="https://github.com/robmarkcole/pimoroni-presto-arcade">GitHub</a>
+      </div>
+    </nav>
+  </header>
+
+  <main id="content">
+    <section class="hero">
+      <div class="hero-copy">
+        <p class="eyebrow">240 × 240 pixels · one tiny cabinet</p>
+        <h1>Presto Arcade</h1>
+        <p class="lede">A pocket-sized collection of road crossings, ogre smashing, treasure hunting and procedural mazes for Pimoroni Presto.</p>
+        <div class="button-row">
+          <a class="button" href="#games">Choose a game</a>
+          <a class="button secondary" href="https://github.com/robmarkcole/pimoroni-presto-arcade">View source</a>
+        </div>
+      </div>
+      <div class="hero-art" aria-label="Ogre Smash running on a stylised Presto display">
+        <div class="presto-frame">
+          <img class="screen" src="images/ogre-smash-gameplay.png" alt="Ogre Smash gameplay with an ogre, tank, truck, car and ducks">
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="games">
+      <div class="section-heading">
+        <div>
+          <p class="kicker">Insert imagination</p>
+          <h2>Four games loaded</h2>
+        </div>
+        <p>Swipe the on-device carousel, tap a game, then take over with the I2C controller.</p>
+      </div>
+
+      <div class="game-grid">
+        <article class="card">
+          <img class="card-image" src="images/ogre-smash-gameplay.png" alt="Ogre Smash road combat">
+          <div class="card-body">
+            <span class="card-number">GAME 01</span>
+            <h3>Ogre Smash!</h3>
+            <p>Smash traffic, leap hazards, dodge tank missiles and chase a high score across ten lives.</p>
+            <a class="card-link" href="games/ogre-smash.html">Game details</a>
+          </div>
+        </article>
+
+        <article class="card">
+          <img class="card-image" src="images/frogger-level-4-lava.png" alt="Frogger Lava level">
+          <div class="card-body">
+            <span class="card-number">GAME 02</span>
+            <h3>Frogger</h3>
+            <p>Cross traffic and moving platforms through River, Night, Ice and Lava themes.</p>
+            <a class="card-link" href="games/frogger.html">Game details</a>
+          </div>
+        </article>
+
+        <article class="card">
+          <img class="card-image" src="images/awesome-game-gameplay.png" alt="Awesome Game with a pirate, treasure and falling hazards">
+          <div class="card-body">
+            <span class="card-number">GAME 03</span>
+            <h3>Awesome Game</h3>
+            <p>Move fast, avoid falling blocks and collect treasure in this compact survival challenge.</p>
+            <a class="card-link" href="games/awesome-game.html">Game details</a>
+          </div>
+        </article>
+
+        <article class="card">
+          <img class="card-image" src="images/random-maze-gameplay.png" alt="A generated purple maze with start and goal tiles">
+          <div class="card-body">
+            <span class="card-number">GAME 04</span>
+            <h3>Random Maze</h3>
+            <p>Find the green exit through a fresh procedural maze that grows with every clear.</p>
+            <a class="card-link" href="games/random-maze.html">Game details</a>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="section" id="hardware">
+      <div class="section-heading">
+        <div>
+          <p class="kicker">The cabinet</p>
+          <h2>Small board. Full arcade.</h2>
+        </div>
+        <p>Every title uses the same controls and returns cleanly to the touch-driven carousel.</p>
+      </div>
+      <div class="spec-grid">
+        <div class="spec"><strong>240²</strong><span>Pixel display</span></div>
+        <div class="spec"><strong>0x21</strong><span>QwSTPad address</span></div>
+        <div class="spec"><strong>I2C 0</strong><span>Controller bus</span></div>
+        <div class="spec"><strong>GPIO 40</strong><span>SDA pin</span></div>
+        <div class="spec"><strong>GPIO 41</strong><span>SCL pin</span></div>
+        <div class="spec"><strong>4</strong><span>Games included</span></div>
+      </div>
+    </section>
+
+    <section class="section" id="install">
+      <div class="install">
+        <p class="kicker">Ready player one</p>
+        <h2>Install the arcade</h2>
+        <div class="detail-grid">
+          <div class="prose">
+            <h3>1. Connect</h3>
+            <p>Attach a QwSTPad to Presto's Qw/ST connector. The games expect I2C 0 using GPIO 40 and 41.</p>
+          </div>
+          <div class="prose">
+            <h3>2. Copy</h3>
+            <p>Copy <code>main.py</code>, each game and any required game assets to the root of the board.</p>
+          </div>
+          <div class="prose">
+            <h3>3. Play</h3>
+            <p>Reset Presto, swipe the carousel and tap a title. In every game, <code>-</code> returns to the menu.</p>
+          </div>
+        </div>
+        <div class="button-row">
+          <a class="button" href="https://github.com/robmarkcole/pimoroni-presto-arcade#install">Full installation notes</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div>
+      <p>Built for Pimoroni Presto + QwSTPad.</p>
+      <p>Source and releases on <a href="https://github.com/robmarkcole/pimoroni-presto-arcade">GitHub</a>.</p>
+    </div>
+  </footer>
+</body>
+</html>

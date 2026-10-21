@@ -232,6 +232,7 @@ class Application:
 # Only games belong in the arcade carousel. Keeping this list explicit prevents
 # utility scripts and hardware demos copied to the board from appearing here.
 GAME_FILES = (
+    "ogre_smash.py",
     "awesome_game.py",
     "random_maze.py",
     "frogger.py",
