@@ -96,6 +96,24 @@ GAME_ICON_ART = {
         ),
         {"G": ART_GREEN, "D": ART_GREEN_DARK, "R": ART_RED, "C": ART_CYAN},
     ),
+    "rainbow_barrage.py": (
+        (
+            "R..........",
+            ".O.........",
+            "..Y........",
+            "...G....PP.",
+            "....C...PP.",
+            ".....B..PP.",
+            "......M.PP.",
+            ".......WPP.",
+            "......WWW..",
+            ".....WWWWW.",
+            "....WWW.WWW",
+        ),
+        {"R": ART_RED, "O": ART_ORANGE, "Y": ART_YELLOW,
+         "G": ART_GREEN, "C": ART_CYAN, "B": ART_BLUE,
+         "M": ART_PURPLE, "P": ART_PURPLE, "W": ART_YELLOW},
+    ),
     "frogger.py": (
         (
             ".GG.....GG.",
@@ -358,6 +376,7 @@ class Application:
 # utility scripts and hardware demos copied to the board from appearing here.
 GAME_FILES = (
     "ogre_smash.py",
+    "rainbow_barrage.py",
     "zombie_escape.py",
     "awesome_game.py",
     "random_maze.py",
