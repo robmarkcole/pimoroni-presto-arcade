@@ -3,6 +3,10 @@
 An arcade carousel for the 240 x 240 Pimoroni Presto, controlled with a
 QwSTPad on the board's Qw/ST (I2C) connector.
 
+The game catalogue and controls guide is published with GitHub Pages at
+[robmarkcole.github.io/pimoroni-presto-arcade](https://robmarkcole.github.io/pimoroni-presto-arcade/).
+The no-build site source lives in [`docs/`](docs/).
+
 ## Games
 
 - **Awesome Game** — dodge falling obstacles and collect treasure.
