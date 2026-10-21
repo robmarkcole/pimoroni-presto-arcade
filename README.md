@@ -16,6 +16,8 @@ The no-build site source lives in [`docs/`](docs/).
   level rather than discarding level progress.
 - **Ogre Smash!** — score as many points as possible with ten lives by
   jumping hazards, smashing traffic, and collecting lightning and mega bombs.
+- **Zombie Escape** — collect every gem, evade pursuing zombies, and unlock
+  the exit across three increasingly dangerous mazes.
 
 All games use the QwSTPad at its default address (`0x21`) on I2C 0, with SDA
 on pin 40 and SCL on pin 41. Direction buttons move, `+` starts or restarts,

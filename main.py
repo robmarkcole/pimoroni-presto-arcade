@@ -233,6 +233,7 @@ class Application:
 # utility scripts and hardware demos copied to the board from appearing here.
 GAME_FILES = (
     "ogre_smash.py",
+    "zombie_escape.py",
     "awesome_game.py",
     "random_maze.py",
     "frogger.py",
