@@ -21,8 +21,8 @@ WIDTH, HEIGHT = display.get_bounds()
 HUD_HEIGHT = 28
 BASE_Y = 174
 FLOOR_HEIGHT = 16
-TOWER_CENTRES = (42, 120, 198)
-TOWER_WIDTH = 38
+TOWER_CENTRES = (28, 89, 151, 212)
+TOWER_WIDTH = 30
 LAUNCHER_Y = 218
 SPECTRUM_MAX = 7
 SCORE_FILE = "rainbow_scores.txt"
@@ -45,7 +45,7 @@ PURPLE = display.create_pen(165, 70, 220)
 PINK = display.create_pen(245, 85, 170)
 
 RAINBOW = (RED, ORANGE, YELLOW, GREEN, CYAN, BLUE, PURPLE)
-TOWER_COLOURS = (PURPLE, CYAN, ORANGE)
+TOWER_COLOURS = (PURPLE, CYAN, ORANGE, PINK)
 
 SOUND_START = ((392, 55), (523, 65), (659, 100))
 SOUND_LAUNCH = ((310, 35), (470, 50))
@@ -54,6 +54,8 @@ SOUND_COLLAPSE = ((180, 45), (140, 50), (95, 110))
 SOUND_INTERCEPT = ((880, 35), (1200, 60))
 SOUND_DAMAGE = ((210, 90), (130, 120), (75, 180))
 SOUND_SPECTRUM = ((440, 45), (554, 45), (659, 45), (880, 130))
+SOUND_HELPER = ((659, 45), (880, 55), (1175, 100))
+SOUND_WRAITH = ((150, 55), (110, 70), (75, 110))
 SOUND_ERROR = ((115, 100),)
 SOUND_GAME_OVER = ((330, 140), (220, 180), (110, 260))
 
@@ -172,11 +174,16 @@ def make_tower(index, wave):
 
 
 def new_wave(game, now):
-    game["towers"] = [make_tower(index, game["wave"]) for index in range(3)]
+    game["towers"] = [make_tower(index, game["wave"])
+                      for index in range(len(TOWER_CENTRES))]
     game["selected"] = 1
     game["target_floor"] = 0
     game["player_missiles"] = []
     game["enemy_missiles"] = []
+    game["energy_pulses"] = []
+    game["flyers"] = []
+    game["helper_beam"] = None
+    game["next_flyer"] = time.ticks_add(now, random.randint(7000, 12000))
     game["last_enemy_fire"] = now
     game["wave_ready"] = None
     game["notice"] = "WAVE " + str(game["wave"])
@@ -195,6 +202,11 @@ def reset_game(controller):
         "target_floor": 0,
         "player_missiles": [],
         "enemy_missiles": [],
+        "energy_pulses": [],
+        "flyers": [],
+        "helper_beam": None,
+        "next_flyer": time.ticks_add(now, random.randint(7000, 12000)),
+        "last_flyer_kind": "wraith",
         "last_enemy_fire": now,
         "last_launch": time.ticks_add(now, -500),
         "invulnerable_until": None,
@@ -298,6 +310,111 @@ def launch_enemy_missile(game, now):
     game["last_enemy_fire"] = now
 
 
+def spawn_flyer(game, now):
+    # Bias toward alternating visitors so both characters appear in a typical
+    # run, while keeping their arrival side, height and timing unpredictable.
+    if random.random() < 0.75:
+        kind = "helper" if game["last_flyer_kind"] == "wraith" else "wraith"
+    else:
+        kind = random.choice(("helper", "wraith"))
+    direction = random.choice((-1, 1))
+    game["flyers"].append({
+        "kind": kind,
+        "x": -18.0 if direction > 0 else WIDTH + 18.0,
+        "y": float(random.randint(45, 86)),
+        "direction": direction,
+        "speed": random.randint(38, 55),
+        "acted": False,
+    })
+    game["last_flyer_kind"] = kind
+    game["next_flyer"] = time.ticks_add(now, random.randint(9000, 16000))
+    game["notice"] = "SKY SPARK!" if kind == "helper" else "VOID WRAITH!"
+    game["notice_until"] = time.ticks_add(now, 850)
+
+
+def helper_attack(game, flyer, now, audio):
+    candidates = [tower for tower in game["towers"] if tower["blocks"]]
+    if not candidates:
+        return
+    target = candidates[0]
+    for tower in candidates[1:]:
+        if len(tower["blocks"]) > len(target["blocks"]):
+            target = tower
+    target_y = tower_top(target) + FLOOR_HEIGHT // 2
+    target["blocks"].pop()
+    game["score"] += 125
+    game["spectrum"] = min(SPECTRUM_MAX, game["spectrum"] + 1)
+    game["helper_beam"] = {
+        "start_x": flyer["x"], "start_y": flyer["y"],
+        "target_x": target["x"], "target_y": target_y,
+        "until": time.ticks_add(now, 550),
+    }
+    game["notice"] = "SKY SPARK +125"
+    game["notice_until"] = time.ticks_add(now, 800)
+    audio.play(SOUND_HELPER)
+
+
+def wraith_attack(game, flyer, now, audio):
+    game["energy_pulses"].append({
+        "start_x": flyer["x"], "start_y": flyer["y"],
+        "target_x": float(TOWER_CENTRES[game["selected"]]),
+        "target_y": float(LAUNCHER_Y),
+        "progress": 0.0,
+        "duration": max(0.75, 1.15 - game["wave"] * 0.025),
+    })
+    game["notice"] = "ENERGY PULSE - MOVE!"
+    game["notice_until"] = time.ticks_add(now, 950)
+    audio.play(SOUND_WRAITH)
+
+
+def pulse_position(pulse):
+    progress = pulse["progress"]
+    return (
+        pulse["start_x"] + (pulse["target_x"] - pulse["start_x"]) * progress,
+        pulse["start_y"] + (pulse["target_y"] - pulse["start_y"]) * progress,
+    )
+
+
+def update_flyers(game, now, dt, controller, audio):
+    if time.ticks_diff(now, game["next_flyer"]) >= 0:
+        spawn_flyer(game, now)
+
+    for flyer in game["flyers"][:]:
+        flyer["x"] += flyer["direction"] * flyer["speed"] * dt
+        reached_centre = ((flyer["direction"] > 0 and flyer["x"] >= WIDTH // 2) or
+                          (flyer["direction"] < 0 and flyer["x"] <= WIDTH // 2))
+        if reached_centre and not flyer["acted"]:
+            flyer["acted"] = True
+            if flyer["kind"] == "helper":
+                helper_attack(game, flyer, now, audio)
+            else:
+                wraith_attack(game, flyer, now, audio)
+        if ((flyer["direction"] > 0 and flyer["x"] > WIDTH + 24) or
+                (flyer["direction"] < 0 and flyer["x"] < -24)):
+            game["flyers"].remove(flyer)
+
+    if (game["helper_beam"] is not None and
+            time.ticks_diff(now, game["helper_beam"]["until"]) >= 0):
+        game["helper_beam"] = None
+
+    for pulse in game["energy_pulses"][:]:
+        pulse["progress"] = min(1.0, pulse["progress"] + dt / pulse["duration"])
+        if pulse["progress"] >= 1.0:
+            game["energy_pulses"].remove(pulse)
+            current_launcher = TOWER_CENTRES[game["selected"]]
+            invulnerable = (game["invulnerable_until"] is not None and
+                            time.ticks_diff(game["invulnerable_until"], now) > 0)
+            if abs(current_launcher - pulse["target_x"]) < 22 and not invulnerable:
+                game["lives"] -= 1
+                controller.show_lives(game["lives"])
+                game["invulnerable_until"] = time.ticks_add(now, 900)
+                game["notice"] = "PULSE HIT!"
+                game["notice_until"] = time.ticks_add(now, 800)
+                audio.play(SOUND_DAMAGE)
+            else:
+                game["score"] += 50
+
+
 def use_spectrum(game, now, audio):
     if game["spectrum"] < SPECTRUM_MAX:
         game["notice"] = "NEED 7 COLOURS"
@@ -309,8 +426,9 @@ def use_spectrum(game, now, audio):
         if tower["blocks"]:
             tower["blocks"].pop()
             destroyed += 1
-    cleared = len(game["enemy_missiles"])
+    cleared = len(game["enemy_missiles"]) + len(game["energy_pulses"])
     game["enemy_missiles"] = []
+    game["energy_pulses"] = []
     game["spectrum"] = 0
     game["score"] += destroyed * 125 + cleared * 50
     game["spectrum_until"] = time.ticks_add(now, 650)
@@ -374,7 +492,7 @@ def update_game(game, controller, audio, now, dt):
         tower = game["towers"][game["selected"]]
         game["target_floor"] = max(0, min(game["target_floor"], len(tower["blocks"]) - 1))
     elif controller.pressed("R"):
-        game["selected"] = min(2, game["selected"] + 1)
+        game["selected"] = min(len(TOWER_CENTRES) - 1, game["selected"] + 1)
         tower = game["towers"][game["selected"]]
         game["target_floor"] = max(0, min(game["target_floor"], len(tower["blocks"]) - 1))
     if controller.pressed("U"):
@@ -388,6 +506,7 @@ def update_game(game, controller, audio, now, dt):
         use_spectrum(game, now, audio)
 
     move_missiles(game, dt, now, controller, audio)
+    update_flyers(game, now, dt, controller, audio)
 
     fire_interval = max(900, 3000 - game["wave"] * 140)
     if game["wave_ready"] is None and time.ticks_diff(now, game["last_enemy_fire"]) >= fire_interval:
@@ -398,6 +517,7 @@ def update_game(game, controller, audio, now, dt):
             game["score"] += game["wave"] * 500
             game["wave_ready"] = time.ticks_add(now, 1500)
             game["enemy_missiles"] = []
+            game["energy_pulses"] = []
             game["notice"] = "WAVE CLEAR +" + str(game["wave"] * 500)
             game["notice_until"] = game["wave_ready"]
         elif time.ticks_diff(now, game["wave_ready"]) >= 0:
@@ -428,8 +548,8 @@ def draw_tower(tower, selected, target_floor):
         display.set_pen(tower["colour"])
         display.rectangle(left, y, TOWER_WIDTH, FLOOR_HEIGHT - 2)
         display.set_pen(BLACK)
-        display.rectangle(left + 5, y + 4, 7, 7)
-        display.rectangle(left + 26, y + 4, 7, 7)
+        display.rectangle(left + 4, y + 4, 6, 7)
+        display.rectangle(left + TOWER_WIDTH - 10, y + 4, 6, 7)
         if block["hp"] < block["max_hp"]:
             display.set_pen(WHITE)
             display.line(left + 17, y + 2, left + 22, y + 12, 2)
@@ -441,8 +561,8 @@ def draw_tower(tower, selected, target_floor):
         top = tower_top(tower)
         display.set_pen(tower["colour"])
         display.polygon([
-            (tower["x"] - 18, top), (tower["x"], top - 11),
-            (tower["x"] + 18, top),
+            (tower["x"] - 14, top), (tower["x"], top - 11),
+            (tower["x"] + 14, top),
         ])
 
 
@@ -485,6 +605,57 @@ def draw_enemy_missile(missile):
     display.circle(int(x), int(y), 4)
 
 
+def draw_flyer(flyer, frame):
+    x = int(flyer["x"])
+    y = int(flyer["y"])
+    direction = flyer["direction"]
+    if flyer["kind"] == "helper":
+        wing = 5 + (frame % 2) * 3
+        display.set_pen(YELLOW)
+        display.polygon([(x - 4, y), (x - 13, y - wing), (x - 10, y + 5)])
+        display.polygon([(x + 4, y), (x + 13, y - wing), (x + 10, y + 5)])
+        display.set_pen(CYAN)
+        display.circle(x, y, 7)
+        display.set_pen(WHITE)
+        display.circle(x + direction * 4, y - 2, 2)
+        display.set_pen(BLACK)
+        display.pixel(x + direction * 5, y - 2)
+        display.set_pen(PINK)
+        display.rectangle(x - 2, y + 6, 5, 5)
+    else:
+        flap = 8 if frame % 2 else 4
+        display.set_pen(PURPLE)
+        display.polygon([(x - 3, y), (x - 15, y - flap),
+                         (x - 11, y + 8), (x, y + 4)])
+        display.polygon([(x + 3, y), (x + 15, y - flap),
+                         (x + 11, y + 8), (x, y + 4)])
+        display.set_pen(DARK_GREY)
+        display.circle(x, y, 8)
+        display.set_pen(RED)
+        display.pixel(x - 3, y - 2)
+        display.pixel(x + 3, y - 2)
+        display.set_pen(PURPLE)
+        display.polygon([(x - 6, y + 4), (x, y + 15), (x + 6, y + 4)])
+
+
+def draw_energy_pulse(pulse, frame):
+    x, y = pulse_position(pulse)
+    radius = 6 + frame % 3
+    display.set_pen(PURPLE)
+    display.circle(int(x), int(y), radius)
+    display.set_pen(PINK)
+    display.circle(int(x), int(y), max(2, radius - 3))
+    display.set_pen(WHITE)
+    display.pixel(int(x), int(y))
+
+
+def draw_helper_beam(beam):
+    for index, colour in enumerate(RAINBOW):
+        display.set_pen(colour)
+        display.line(int(beam["start_x"]), int(beam["start_y"] + index - 3),
+                     int(beam["target_x"]), int(beam["target_y"] + index - 3), 1)
+
+
 def draw_hud(game):
     display.set_pen(BLACK)
     display.rectangle(0, 0, WIDTH, HUD_HEIGHT)
@@ -501,10 +672,17 @@ def draw_game(game, now):
     draw_background()
     for index, tower in enumerate(game["towers"]):
         draw_tower(tower, index == game["selected"], game["target_floor"])
+    if game["helper_beam"] is not None:
+        draw_helper_beam(game["helper_beam"])
+    frame = (now // 120) % 4
+    for flyer in game["flyers"]:
+        draw_flyer(flyer, frame)
     for missile in game["player_missiles"]:
         draw_player_missile(missile)
     for missile in game["enemy_missiles"]:
         draw_enemy_missile(missile)
+    for pulse in game["energy_pulses"]:
+        draw_energy_pulse(pulse, frame)
     draw_launcher(game, now)
 
     if game["spectrum_until"] is not None and time.ticks_diff(game["spectrum_until"], now) > 0:
