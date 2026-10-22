@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Four tiny arcade games for Pimoroni Presto, all controlled by a QwSTPad over I2C.">
+  <meta name="description" content="Seven tiny arcade games for Pimoroni Presto, all controlled by a QwSTPad over I2C.">
   <title>Pimoroni Presto Arcade</title>
   <link rel="stylesheet" href="styles.css">
 </head>
@@ -26,7 +26,7 @@
       <div class="hero-copy">
         <p class="eyebrow">240 × 240 pixels · one tiny cabinet</p>
         <h1>Presto Arcade</h1>
-        <p class="lede">A pocket-sized collection of road crossings, ogre smashing, treasure hunting and procedural mazes for Pimoroni Presto.</p>
+        <p class="lede">A pocket-sized collection of cloud jumping, tower blasting, maze escaping, road crossing and ogre smashing for Pimoroni Presto.</p>
         <div class="button-row">
           <a class="button" href="#games">Choose a game</a>
           <a class="button secondary" href="https://github.com/robmarkcole/pimoroni-presto-arcade">View source</a>
@@ -43,16 +43,26 @@
       <div class="section-heading">
         <div>
           <p class="kicker">Insert imagination</p>
-          <h2>Four games loaded</h2>
+          <h2>Seven games loaded</h2>
         </div>
         <p>Swipe the on-device carousel, tap a game, then take over with the I2C controller.</p>
       </div>
 
       <div class="game-grid">
         <article class="card">
-          <img class="card-image" src="images/ogre-smash-gameplay.png" alt="Ogre Smash road combat">
+          <img class="card-image" src="images/fly-smash-gameplay.png" alt="Fly Smash cloud-jumping action with a flying car and laser hazards">
           <div class="card-body">
             <span class="card-number">GAME 01</span>
+            <h3>Fly Smash</h3>
+            <p>Auto-bounce through opening clouds, collect a laser and smash bomb-carrying flying cars.</p>
+            <a class="card-link" href="games/fly-smash.html">Game details</a>
+          </div>
+        </article>
+
+        <article class="card">
+          <img class="card-image" src="images/ogre-smash-gameplay.png" alt="Ogre Smash road combat">
+          <div class="card-body">
+            <span class="card-number">GAME 02</span>
             <h3>Ogre Smash!</h3>
             <p>Smash traffic, leap hazards, dodge tank missiles and chase a high score across ten lives.</p>
             <a class="card-link" href="games/ogre-smash.html">Game details</a>
@@ -60,19 +70,29 @@
         </article>
 
         <article class="card">
-          <img class="card-image" src="images/frogger-level-4-lava.png" alt="Frogger Lava level">
+          <img class="card-image" src="images/rainbow-barrage-gameplay.png" alt="Rainbow Barrage with four towers, arcing missiles and flying characters">
           <div class="card-body">
-            <span class="card-number">GAME 02</span>
-            <h3>Frogger</h3>
-            <p>Cross traffic and moving platforms through River, Night, Ice and Lava themes.</p>
-            <a class="card-link" href="games/frogger.html">Game details</a>
+            <span class="card-number">GAME 03</span>
+            <h3>Rainbow Barrage</h3>
+            <p>Arc rainbow missiles into storm towers while dodging attacks from the sky.</p>
+            <a class="card-link" href="games/rainbow-barrage.html">Game details</a>
+          </div>
+        </article>
+
+        <article class="card">
+          <img class="card-image" src="images/zombie-escape-gameplay.png" alt="Zombie Escape maze with gems, zombies and a green exit">
+          <div class="card-body">
+            <span class="card-number">GAME 04</span>
+            <h3>Zombie Escape</h3>
+            <p>Collect every gem in the maze, stay ahead of the zombies and unlock the exit.</p>
+            <a class="card-link" href="games/zombie-escape.html">Game details</a>
           </div>
         </article>
 
         <article class="card">
           <img class="card-image" src="images/awesome-game-gameplay.png" alt="Awesome Game with a pirate, treasure and falling hazards">
           <div class="card-body">
-            <span class="card-number">GAME 03</span>
+            <span class="card-number">GAME 05</span>
             <h3>Awesome Game</h3>
             <p>Move fast, avoid falling blocks and collect treasure in this compact survival challenge.</p>
             <a class="card-link" href="games/awesome-game.html">Game details</a>
@@ -82,10 +102,20 @@
         <article class="card">
           <img class="card-image" src="images/random-maze-gameplay.png" alt="A generated purple maze with start and goal tiles">
           <div class="card-body">
-            <span class="card-number">GAME 04</span>
+            <span class="card-number">GAME 06</span>
             <h3>Random Maze</h3>
             <p>Find the green exit through a fresh procedural maze that grows with every clear.</p>
             <a class="card-link" href="games/random-maze.html">Game details</a>
+          </div>
+        </article>
+
+        <article class="card">
+          <img class="card-image" src="images/frogger-level-4-lava.png" alt="Frogger Lava level">
+          <div class="card-body">
+            <span class="card-number">GAME 07</span>
+            <h3>Frogger</h3>
+            <p>Cross traffic and moving platforms through River, Night, Ice and Lava themes.</p>
+            <a class="card-link" href="games/frogger.html">Game details</a>
           </div>
         </article>
       </div>
@@ -105,7 +135,7 @@
         <div class="spec"><strong>I2C 0</strong><span>Controller bus</span></div>
         <div class="spec"><strong>GPIO 40</strong><span>SDA pin</span></div>
         <div class="spec"><strong>GPIO 41</strong><span>SCL pin</span></div>
-        <div class="spec"><strong>4</strong><span>Games included</span></div>
+        <div class="spec"><strong>7</strong><span>Games included</span></div>
       </div>
     </section>
 
