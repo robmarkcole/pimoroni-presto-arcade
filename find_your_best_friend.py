@@ -28,7 +28,7 @@ NET_POSITION = (3, 3)
 TOOL_POSITIONS = ((3, 3), (7, 3), (3, 5), (7, 5),
                   (5, 7), (11, 7), (7, 9), (11, 11))
 MONSTER_RESPAWNS = ((1, 11), (13, 1), (13, 11), (7, 7))
-MONSTER_INTERVAL = 620
+MONSTER_INTERVAL = 780
 NET_RANGE = 6
 FRIEND_DOOR_FILE = "find_friend_door.txt"
 
