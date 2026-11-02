@@ -198,16 +198,31 @@ def reset_positions(game):
 
 def choose_friend_door():
     last_index = -1
+    used_indices = []
     try:
         with open(FRIEND_DOOR_FILE, "r") as door_file:
-            last_index = int(door_file.readline().strip())
+            saved = door_file.readline().strip()
+            if "|" in saved:
+                last_text, used_text = saved.split("|", 1)
+                last_index = int(last_text)
+                if used_text:
+                    used_indices = [int(value) for value in used_text.split(",")]
+            else:
+                # Migrate the original one-number save format.
+                last_index = int(saved)
+                used_indices = [last_index]
     except (OSError, ValueError):
         pass
-    choices = [index for index in range(len(DOORS)) if index != last_index]
+    choices = [index for index in range(len(DOORS)) if index not in used_indices]
+    if not choices:
+        used_indices = []
+        choices = [index for index in range(len(DOORS)) if index != last_index]
     selected = random.choice(choices)
+    used_indices.append(selected)
     try:
         with open(FRIEND_DOOR_FILE, "w") as door_file:
-            door_file.write(str(selected))
+            door_file.write(str(selected) + "|" +
+                            ",".join(str(index) for index in used_indices))
     except OSError:
         pass
     return DOORS[selected]
