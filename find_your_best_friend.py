@@ -28,6 +28,7 @@ NET_POSITION = (3, 3)
 MONSTER_INTERVAL = 620
 NET_RANGE = 6
 CATCH_RADIUS = 4
+FRIEND_DOOR_FILE = "find_friend_door.txt"
 
 MAP = (
     "###############",
@@ -195,6 +196,23 @@ def reset_positions(game):
     game["last_monster_move"] = time.ticks_ms()
 
 
+def choose_friend_door():
+    last_index = -1
+    try:
+        with open(FRIEND_DOOR_FILE, "r") as door_file:
+            last_index = int(door_file.readline().strip())
+    except (OSError, ValueError):
+        pass
+    choices = [index for index in range(len(DOORS)) if index != last_index]
+    selected = random.choice(choices)
+    try:
+        with open(FRIEND_DOOR_FILE, "w") as door_file:
+            door_file.write(str(selected))
+    except OSError:
+        pass
+    return DOORS[selected]
+
+
 def new_game(controller):
     game = {
         "player": PLAYER_START,
@@ -204,7 +222,7 @@ def new_game(controller):
         "score": 0,
         "has_net": False,
         "monster_caught": False,
-        "friend_door": random.choice(DOORS),
+        "friend_door": choose_friend_door(),
         "opened_doors": set(),
         "last_monster_move": time.ticks_ms(),
         "net_beam": None,
