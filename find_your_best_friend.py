@@ -25,6 +25,9 @@ ROWS = 13
 PLAYER_START = (1, 1)
 MONSTER_START = (1, 11)
 NET_POSITION = (3, 3)
+TOOL_POSITIONS = ((3, 3), (7, 3), (3, 5), (7, 5),
+                  (5, 7), (11, 7), (7, 9), (11, 11))
+MONSTER_RESPAWNS = ((1, 11), (13, 1), (13, 11), (7, 7))
 MONSTER_INTERVAL = 620
 NET_RANGE = 6
 FRIEND_DOOR_FILE = "find_friend_door.txt"
@@ -236,8 +239,10 @@ def new_game(controller):
         "lives": 3,
         "score": 0,
         "has_net": False,
+        "net_position": random.choice(TOOL_POSITIONS),
         "monster_caught": False,
         "monster_launched": False,
+        "monster_respawn_at": None,
         "bag_launch_start": None,
         "bag_launch_from": None,
         "friend_door": choose_friend_door(),
@@ -310,7 +315,7 @@ def lose_life(game, controller, audio, now):
 
 
 def collect_tool(game, audio, now):
-    if game["player"] == NET_POSITION and not game["has_net"]:
+    if game["player"] == game["net_position"] and not game["has_net"]:
         game["has_net"] = True
         game["score"] += 50
         game["notice"] = "PRESS A TO CATCH MONSTER"
@@ -400,12 +405,34 @@ def launch_monster_bag(game, audio, now):
         game["notice_until"] = time.ticks_add(now, 650)
         return
     game["monster_launched"] = True
+    game["monster_respawn_at"] = time.ticks_add(now, 1600)
     game["bag_launch_start"] = now
     game["bag_launch_from"] = game["player"]
     game["score"] += 50
     game["notice"] = "MONSTER FIRED AWAY!"
     game["notice_until"] = time.ticks_add(now, 900)
     audio.play(SOUND_THROW)
+
+
+def return_monster(game, audio, now):
+    monster_choices = [position for position in MONSTER_RESPAWNS
+                       if position != game["player"]]
+    game["monster"] = random.choice(monster_choices)
+    tool_choices = [position for position in TOOL_POSITIONS
+                    if position != game["net_position"] and
+                    position != game["player"] and
+                    position != game["monster"]]
+    game["net_position"] = random.choice(tool_choices)
+    game["has_net"] = False
+    game["monster_caught"] = False
+    game["monster_launched"] = False
+    game["monster_respawn_at"] = None
+    game["bag_launch_start"] = None
+    game["bag_launch_from"] = None
+    game["last_monster_move"] = now
+    game["notice"] = "MONSTER BACK - FIND NET"
+    game["notice_until"] = time.ticks_add(now, 1100)
+    audio.play(SOUND_START)
 
 
 def update_game(game, controller, audio, now):
@@ -416,6 +443,9 @@ def update_game(game, controller, audio, now):
     if game["net_until"] is not None and time.ticks_diff(now, game["net_until"]) >= 0:
         game["net_beam"] = None
         game["net_until"] = None
+    if (game["monster_respawn_at"] is not None and
+            time.ticks_diff(now, game["monster_respawn_at"]) >= 0):
+        return_monster(game, audio, now)
 
     direction = None
     if controller.pressed("U"):
@@ -539,8 +569,8 @@ def draw_launched_bag(game, now):
     display.line(x + 10, y, x, y + 10, 1)
 
 
-def draw_net_tool(now):
-    x, y = grid_xy(NET_POSITION)
+def draw_net_tool(position, now):
+    x, y = grid_xy(position)
     pulse = (now // 130) % 2
     display.set_pen(GREEN)
     display.rectangle(x + 3, y + 7, 10, 4)
@@ -606,7 +636,7 @@ def draw_game(game, now):
             else:
                 draw_floor(x, y)
     if not game["has_net"]:
-        draw_net_tool(now)
+        draw_net_tool(game["net_position"], now)
     frame = (now // 140) % 4
     if not game["monster_caught"]:
         draw_monster(game["monster"], frame)
