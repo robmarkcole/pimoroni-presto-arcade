@@ -64,6 +64,23 @@ ART_BLUE = display.create_pen(45, 80, 190)
 
 
 GAME_ICON_ART = {
+    "find_your_best_friend.py": (
+        (
+            "DDDD...DDDD",
+            "D..D...D..D",
+            "D..D...D..D",
+            "D..D...D..D",
+            "DDDD...DDDD",
+            "...........",
+            "....SSS....",
+            "...SSSSS...",
+            "...SDDSS...",
+            "....CCC....",
+            "...CCCCC...",
+        ),
+        {"D": ART_ORANGE, "S": ART_SKIN,
+         "C": ART_CYAN},
+    ),
     "fly_smash.py": (
         (
             "....CCC....",
@@ -392,6 +409,7 @@ class Application:
 # Only games belong in the arcade carousel. Keeping this list explicit prevents
 # utility scripts and hardware demos copied to the board from appearing here.
 GAME_FILES = (
+    "find_your_best_friend.py",
     "fly_smash.py",
     "ogre_smash.py",
     "rainbow_barrage.py",

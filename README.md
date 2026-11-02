@@ -8,6 +8,7 @@ over I2C.
 
 ## Games
 
+- **Find Your Best Friend** — catch a monster, search the doors and rescue your friend.
 - **Fly Smash** — auto-bounce through opening clouds and laser flying cars.
 - **Ogre Smash!** — smash traffic, leap hazards and chase a high score.
 - **Rainbow Barrage** — collapse storm towers with arcing rainbow missiles.
@@ -60,7 +61,7 @@ With Presto connected over USB and `mpremote` available:
 
 ```sh
 mpremote cp main.py awesome_game.py random_maze.py frogger.py ogre_smash.py \
-  zombie_escape.py rainbow_barrage.py fly_smash.py :
+  zombie_escape.py rainbow_barrage.py fly_smash.py find_your_best_friend.py :
 mpremote reset
 ```
 
