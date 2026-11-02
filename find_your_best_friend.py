@@ -27,7 +27,6 @@ MONSTER_START = (1, 11)
 NET_POSITION = (3, 3)
 MONSTER_INTERVAL = 620
 NET_RANGE = 6
-CATCH_RADIUS = 4
 FRIEND_DOOR_FILE = "find_friend_door.txt"
 
 MAP = (
@@ -77,6 +76,7 @@ SOUND_START = ((392, 55), (523, 60), (659, 100))
 SOUND_STEP = ((330, 20),)
 SOUND_NET = ((620, 30), (820, 45))
 SOUND_CATCH = ((440, 45), (659, 55), (880, 100))
+SOUND_THROW = ((420, 35), (620, 45), (980, 80))
 SOUND_DOOR = ((180, 45), (260, 65))
 SOUND_EMPTY = ((180, 70), (135, 90))
 SOUND_TOOL = ((523, 45), (784, 85))
@@ -132,7 +132,7 @@ class Audio:
 
 
 class Controller:
-    KEYS = ("U", "D", "L", "R", "A", "+", "-")
+    KEYS = ("U", "D", "L", "R", "A", "X", "+", "-")
 
     def __init__(self):
         self.pad = QwSTPad(I2C(**I2C_PINS), I2C_ADDRESS)
@@ -237,6 +237,9 @@ def new_game(controller):
         "score": 0,
         "has_net": False,
         "monster_caught": False,
+        "monster_launched": False,
+        "bag_launch_start": None,
+        "bag_launch_from": None,
         "friend_door": choose_friend_door(),
         "opened_doors": set(),
         "last_monster_move": time.ticks_ms(),
@@ -310,7 +313,7 @@ def collect_tool(game, audio, now):
     if game["player"] == NET_POSITION and not game["has_net"]:
         game["has_net"] = True
         game["score"] += 50
-        game["notice"] = "FACE MONSTER + PRESS A"
+        game["notice"] = "PRESS A TO CATCH MONSTER"
         game["notice_until"] = time.ticks_add(now, 1400)
         audio.play(SOUND_TOOL)
 
@@ -341,34 +344,15 @@ def fire_net(game, audio, now):
         audio.play(SOUND_ERROR)
         return
     start = game["player"]
-    dx, dy = game["facing"]
-    end = start
     monster = game["monster"]
-    distance_to_monster = (abs(start[0] - monster[0]) +
-                           abs(start[1] - monster[1]))
-    caught = distance_to_monster <= CATCH_RADIUS
-    if caught:
-        end = monster
-    for distance in range(1, NET_RANGE + 1):
-        if caught:
-            break
-        position = (start[0] + dx * distance, start[1] + dy * distance)
-        if not is_floor(position):
-            break
-        end = position
-    game["net_beam"] = (start, end)
+    game["net_beam"] = (start, monster)
     game["net_until"] = time.ticks_add(now, 280)
-    if caught:
-        game["monster_caught"] = True
-        game["monster"] = None
-        game["score"] += 200
-        game["notice"] = "MONSTER CAUGHT! FIND FRIEND"
-        game["notice_until"] = time.ticks_add(now, 1200)
-        audio.play(SOUND_CATCH)
-    else:
-        game["notice"] = "NET MISSED - GET CLOSER"
-        game["notice_until"] = time.ticks_add(now, 700)
-        audio.play(SOUND_NET)
+    game["monster_caught"] = True
+    game["monster"] = None
+    game["score"] += 200
+    game["notice"] = "MONSTER CAUGHT! FIND FRIEND"
+    game["notice_until"] = time.ticks_add(now, 1200)
+    audio.play(SOUND_CATCH)
 
 
 def open_door(game, audio, now):
@@ -405,6 +389,25 @@ def use_action(game, audio, now):
     return "playing"
 
 
+def launch_monster_bag(game, audio, now):
+    if not game["monster_caught"]:
+        game["notice"] = "CATCH MONSTER FIRST"
+        game["notice_until"] = time.ticks_add(now, 650)
+        audio.play(SOUND_ERROR)
+        return
+    if game["monster_launched"]:
+        game["notice"] = "MONSTER ALREADY GONE"
+        game["notice_until"] = time.ticks_add(now, 650)
+        return
+    game["monster_launched"] = True
+    game["bag_launch_start"] = now
+    game["bag_launch_from"] = game["player"]
+    game["score"] += 50
+    game["notice"] = "MONSTER FIRED AWAY!"
+    game["notice_until"] = time.ticks_add(now, 900)
+    audio.play(SOUND_THROW)
+
+
 def update_game(game, controller, audio, now):
     if game["hit_until"] is not None:
         if time.ticks_diff(now, game["hit_until"]) < 0:
@@ -434,6 +437,8 @@ def update_game(game, controller, audio, now):
         result = use_action(game, audio, now)
         if result == "won":
             return result
+    if controller.pressed("X"):
+        launch_monster_bag(game, audio, now)
 
     if (not game["monster_caught"] and
             time.ticks_diff(now, game["last_monster_move"]) >= MONSTER_INTERVAL):
@@ -516,6 +521,24 @@ def draw_carried_monster(player, frame):
         display.line(x, y + 8 + offset, x + 7, y + 15 - offset, 1)
 
 
+def draw_launched_bag(game, now):
+    if game["bag_launch_start"] is None:
+        return
+    elapsed = time.ticks_diff(now, game["bag_launch_start"])
+    if elapsed >= 700:
+        return
+    start_x, start_y = grid_xy(game["bag_launch_from"])
+    x = start_x + 5 + elapsed * 3 // 10
+    y = start_y + 8 - (elapsed * (700 - elapsed)) // 7000
+    display.set_pen(GREY)
+    display.rectangle(x, y, 10, 10)
+    display.set_pen(PURPLE)
+    display.circle(x + 5, y + 5, 3)
+    display.set_pen(WHITE)
+    display.line(x, y, x + 10, y + 10, 1)
+    display.line(x + 10, y, x, y + 10, 1)
+
+
 def draw_net_tool(now):
     x, y = grid_xy(NET_POSITION)
     pulse = (now // 130) % 2
@@ -559,8 +582,12 @@ def draw_hud(game):
     display.text("L" + str(game["lives"]), 83, 8, 25, 1)
     display.set_pen(GREEN if game["has_net"] else GREY)
     display.text("NET", 112, 8, 28, 1)
-    display.set_pen(CYAN if game["monster_caught"] else GREY)
-    display.text("CAUGHT", 148, 8, 51, 1)
+    if game["monster_launched"]:
+        display.set_pen(GREEN)
+        display.text("GONE", 153, 8, 42, 1)
+    else:
+        display.set_pen(CYAN if game["monster_caught"] else GREY)
+        display.text("CAUGHT", 148, 8, 51, 1)
     display.set_pen(PINK)
     display.text(str(len(game["opened_doors"])) + "/" + str(len(DOORS)), 205, 8, 33, 1)
 
@@ -583,8 +610,9 @@ def draw_game(game, now):
     frame = (now // 140) % 4
     if not game["monster_caught"]:
         draw_monster(game["monster"], frame)
-    else:
+    elif not game["monster_launched"]:
         draw_carried_monster(game["player"], frame)
+    draw_launched_bag(game, now)
     draw_player(game["player"], game["facing"], frame)
     draw_net_beam(game)
     draw_hud(game)
@@ -605,9 +633,9 @@ def draw_title():
     centre_text("FIND YOUR", 58, 3, CYAN)
     centre_text("BEST FRIEND", 86, 3, YELLOW)
     centre_text("1. GET THE NET", 125, 1, GREEN)
-    centre_text("2. GET CLOSE + PRESS A", 140, 1, PURPLE)
+    centre_text("2. PRESS A TO CATCH", 140, 1, PURPLE)
     centre_text("3. SEARCH THE DOORS", 155, 1, PINK)
-    centre_text("D-PAD MOVE   A USE", 176, 1, WHITE)
+    centre_text("A NET/OPEN   X THROW", 176, 1, WHITE)
     centre_text("+ START       - MENU", 202, 1, YELLOW)
 
 
