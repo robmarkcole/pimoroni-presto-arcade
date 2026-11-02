@@ -27,6 +27,7 @@ MONSTER_START = (1, 11)
 NET_POSITION = (3, 3)
 MONSTER_INTERVAL = 620
 NET_RANGE = 6
+CATCH_RADIUS = 4
 
 MAP = (
     "###############",
@@ -263,8 +264,11 @@ def lose_life(game, controller, audio, now):
     if game["lives"] <= 0:
         return "game_over"
     reset_positions(game)
+    game["has_net"] = False
+    game["net_beam"] = None
+    game["net_until"] = None
     game["hit_until"] = time.ticks_add(now, 1000)
-    game["notice"] = "MONSTER GOT YOU!"
+    game["notice"] = "NET DROPPED - GET IT AGAIN"
     game["notice_until"] = game["hit_until"]
     return "playing"
 
@@ -273,8 +277,8 @@ def collect_tool(game, audio, now):
     if game["player"] == NET_POSITION and not game["has_net"]:
         game["has_net"] = True
         game["score"] += 50
-        game["notice"] = "NET READY - FACE + A"
-        game["notice_until"] = time.ticks_add(now, 1100)
+        game["notice"] = "FACE MONSTER + PRESS A"
+        game["notice_until"] = time.ticks_add(now, 1400)
         audio.play(SOUND_TOOL)
 
 
@@ -286,14 +290,15 @@ def move_player(game, direction, audio, now):
         if tile_at(candidate) == "D":
             if not game["monster_caught"]:
                 game["notice"] = "CATCH MONSTER FIRST"
-            else:
-                game["notice"] = "PRESS A TO OPEN"
-            game["notice_until"] = time.ticks_add(now, 650)
-            audio.play(SOUND_ERROR)
-        return
+                game["notice_until"] = time.ticks_add(now, 650)
+                audio.play(SOUND_ERROR)
+                return "playing"
+            return open_door(game, audio, now)
+        return "playing"
     game["player"] = candidate
     collect_tool(game, audio, now)
     audio.play(SOUND_STEP)
+    return "playing"
 
 
 def fire_net(game, audio, now):
@@ -305,15 +310,19 @@ def fire_net(game, audio, now):
     start = game["player"]
     dx, dy = game["facing"]
     end = start
-    caught = False
+    monster = game["monster"]
+    distance_to_monster = (abs(start[0] - monster[0]) +
+                           abs(start[1] - monster[1]))
+    caught = distance_to_monster <= CATCH_RADIUS
+    if caught:
+        end = monster
     for distance in range(1, NET_RANGE + 1):
+        if caught:
+            break
         position = (start[0] + dx * distance, start[1] + dy * distance)
         if not is_floor(position):
             break
         end = position
-        if position == game["monster"]:
-            caught = True
-            break
     game["net_beam"] = (start, end)
     game["net_until"] = time.ticks_add(now, 280)
     if caught:
@@ -324,6 +333,8 @@ def fire_net(game, audio, now):
         game["notice_until"] = time.ticks_add(now, 1200)
         audio.play(SOUND_CATCH)
     else:
+        game["notice"] = "NET MISSED - GET CLOSER"
+        game["notice_until"] = time.ticks_add(now, 700)
         audio.play(SOUND_NET)
 
 
@@ -380,7 +391,9 @@ def update_game(game, controller, audio, now):
     elif controller.pressed("R"):
         direction = (1, 0)
     if direction is not None:
-        move_player(game, direction, audio, now)
+        result = move_player(game, direction, audio, now)
+        if result == "won":
+            return result
         if not game["monster_caught"] and game["player"] == game["monster"]:
             return lose_life(game, controller, audio, now)
 
@@ -559,7 +572,7 @@ def draw_title():
     centre_text("FIND YOUR", 58, 3, CYAN)
     centre_text("BEST FRIEND", 86, 3, YELLOW)
     centre_text("1. GET THE NET", 125, 1, GREEN)
-    centre_text("2. CATCH THE MONSTER", 140, 1, PURPLE)
+    centre_text("2. GET CLOSE + PRESS A", 140, 1, PURPLE)
     centre_text("3. SEARCH THE DOORS", 155, 1, PINK)
     centre_text("D-PAD MOVE   A USE", 176, 1, WHITE)
     centre_text("+ START       - MENU", 202, 1, YELLOW)
