@@ -292,6 +292,97 @@ def render_fly_smash():
     save(image, "fly-smash-gameplay.png")
 
 
+def render_find_your_best_friend():
+    image = Image.new("RGB", (WIDTH, HEIGHT), (22, 25, 38))
+    draw = ImageDraw.Draw(image)
+    maze = (
+        "###############", "#.....D.......#", "#.###.#.###.#.#",
+        "#...#.....D...#", "###.#.###.#.###", "#...D...#.#...#",
+        "#.#####.#.###.#", "#.......D.....#", "#.###.#####.#.#",
+        "#...D.......#.#", "#.#.###.###...#", "#.....D.......#",
+        "###############",
+    )
+    cell = 16
+    for row, tiles in enumerate(maze):
+        for column, tile in enumerate(tiles):
+            x = column * cell
+            y = 28 + row * cell
+            if tile in "#D":
+                draw.rectangle((x, y, x + 15, y + 15), fill=(70, 60, 145))
+                draw.line((x + 2, y + 2, x + 13, y + 2), fill=(125, 105, 235), width=2)
+                if tile == "D":
+                    draw.rectangle((x + 3, y + 2, x + 12, y + 15), fill=(135, 76, 38))
+                    draw.rectangle((x + 5, y + 4, x + 10, y + 12), fill=(65, 35, 25))
+                    draw.point((x + 10, y + 9), fill=(255, 225, 40))
+            else:
+                draw.point((x + 4, y + 5), fill=(34, 39, 58))
+                draw.point((x + 12, y + 12), fill=(34, 39, 58))
+    # Net launcher.
+    draw.rectangle((51, 82, 61, 86), fill=(65, 220, 95))
+    draw.ellipse((48, 80, 55, 87), outline=(45, 220, 240), width=2)
+    # Player firing the net.
+    draw.rectangle((36, 57, 44, 71), fill=(45, 220, 240))
+    draw.ellipse((35, 49, 45, 59), fill=(255, 190, 125))
+    draw.line((44, 63, 108, 63), fill=(255, 255, 255), width=2)
+    for x in range(48, 109, 8):
+        draw.line((x, 60, x, 66), fill=(45, 220, 240))
+    # Monster.
+    draw.ellipse((105, 55, 121, 70), fill=(160, 70, 220))
+    draw.point((110, 61), fill=(240, 55, 60))
+    draw.point((116, 61), fill=(240, 55, 60))
+    # HUD.
+    draw.rectangle((0, 0, WIDTH, 27), fill=(0, 0, 0))
+    draw.text((3, 3), "S 250", font=font(13), fill=(255, 225, 40))
+    draw.text((83, 7), "L3", font=font(8), fill=(255, 255, 255))
+    draw.text((112, 7), "NET", font=font(8), fill=(65, 220, 95))
+    draw.text((148, 7), "CATCH", font=font(8), fill=(105, 115, 130))
+    draw.text((211, 7), "0/6", font=font(8), fill=(245, 90, 175))
+    save(image, "find-your-best-friend-gameplay.png")
+
+
+def render_duck_kart_rally():
+    image = Image.new("RGB", (WIDTH, HEIGHT), (55, 155, 70))
+    draw = ImageDraw.Draw(image)
+    draw.rectangle((24, 28, 215, HEIGHT), fill=(25, 115, 55))
+    draw.rectangle((30, 28, 209, HEIGHT), fill=(65, 68, 78))
+    for y in range(35, HEIGHT, 40):
+        for x in (72, 118, 164):
+            draw.rectangle((x, y, x + 4, y + 20), fill=(92, 96, 108))
+    draw.line((30, 28, 30, HEIGHT), fill=(255, 255, 255), width=2)
+    draw.line((208, 28, 208, HEIGHT), fill=(255, 255, 255), width=2)
+    # Coin and speed arrows.
+    draw.ellipse((44, 68, 57, 82), fill=(255, 135, 35))
+    draw.ellipse((47, 70, 54, 80), fill=(255, 225, 35))
+    draw.polygon(((131, 98), (144, 83), (157, 98), (150, 98),
+                  (144, 91), (138, 98)), fill=(45, 220, 240))
+    # Rocks.
+    for x, y in ((88, 55), (177, 132)):
+        draw.polygon(((x - 11, y + 18), (x - 8, y + 5), (x - 2, y),
+                      (x + 8, y + 3), (x + 12, y + 18)), fill=(45, 48, 58))
+        draw.polygon(((x - 5, y + 6), (x, y + 2), (x + 5, y + 6)), fill=(105, 110, 120))
+    # Friendly rival.
+    draw.ellipse((44, 130, 52, 138), fill=(0, 0, 0))
+    draw.ellipse((58, 130, 66, 138), fill=(0, 0, 0))
+    draw.rectangle((44, 119, 66, 134), fill=(245, 85, 175))
+    draw.ellipse((50, 110, 61, 122), fill=(255, 225, 35))
+    # Player duck kart.
+    x, y = 144, 184
+    draw.ellipse((x - 13, y + 18, x - 3, y + 28), fill=(0, 0, 0))
+    draw.ellipse((x + 3, y + 18, x + 13, y + 28), fill=(0, 0, 0))
+    draw.rectangle((x - 11, y + 9, x + 11, y + 23), fill=(45, 220, 240))
+    draw.ellipse((x - 8, y - 1, x + 8, y + 15), fill=(255, 225, 35))
+    draw.rectangle((x + 5, y + 5, x + 13, y + 9), fill=(255, 135, 35))
+    draw.point((x + 2, y + 5), fill=(0, 0, 0))
+    # HUD.
+    draw.rectangle((0, 0, WIDTH, 27), fill=(0, 0, 0))
+    draw.text((3, 3), "$4", font=font(13), fill=(255, 225, 35))
+    draw.text((52, 7), "312m", font=font(8), fill=(255, 255, 255))
+    draw.text((103, 7), "SPD 112", font=font(8), fill=(45, 220, 240))
+    draw.rectangle((165, 9, 236, 17), fill=(45, 48, 58))
+    draw.rectangle((165, 9, 199, 17), fill=(65, 220, 95))
+    save(image, "duck-kart-rally-gameplay.png")
+
+
 def main():
     render_ogre_smash()
     render_random_maze()
@@ -299,6 +390,8 @@ def main():
     render_zombie_escape()
     render_rainbow_barrage()
     render_fly_smash()
+    render_find_your_best_friend()
+    render_duck_kart_rally()
 
 
 if __name__ == "__main__":
