@@ -8,6 +8,7 @@ over I2C.
 
 ## Games
 
+- **Duck Kart Rally** — steer a duck kart through boosts, coins and rocky tracks.
 - **Find Your Best Friend** — catch a monster, search the doors and rescue your friend.
 - **Fly Smash** — auto-bounce through opening clouds and laser flying cars.
 - **Ogre Smash!** — smash traffic, leap hazards and chase a high score.
@@ -61,7 +62,8 @@ With Presto connected over USB and `mpremote` available:
 
 ```sh
 mpremote cp main.py awesome_game.py random_maze.py frogger.py ogre_smash.py \
-  zombie_escape.py rainbow_barrage.py fly_smash.py find_your_best_friend.py :
+  zombie_escape.py rainbow_barrage.py fly_smash.py find_your_best_friend.py \
+  duck_kart_rally.py :
 mpremote reset
 ```
 
