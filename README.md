@@ -8,15 +8,15 @@ over I2C.
 
 ## Games
 
-- **Duck Kart Rally** — steer a duck kart through boosts, coins and rocky tracks.
-- **Find Your Best Friend** — catch a monster, search the doors and rescue your friend.
-- **Fly Smash** — auto-bounce through opening clouds and laser flying cars.
-- **Ogre Smash!** — smash traffic, leap hazards and chase a high score.
-- **Rainbow Barrage** — collapse storm towers with arcing rainbow missiles.
-- **Zombie Escape** — collect every gem while escaping pursuing zombies.
-- **Frogger** — cross traffic and moving platforms through four themes.
-- **Random Maze** — escape increasingly difficult generated mazes.
-- **Awesome Game** — dodge falling obstacles and collect treasure.
+- **[Duck Kart Rally](https://robmarkcole.github.io/pimoroni-presto-arcade/games/duck-kart-rally.html)** — steer a duck kart through boosts, coins and rocky tracks.
+- **[Find Your Best Friend](https://robmarkcole.github.io/pimoroni-presto-arcade/games/find-your-best-friend.html)** — catch a monster, search the doors and rescue your friend.
+- **[Fly Smash](https://robmarkcole.github.io/pimoroni-presto-arcade/games/fly-smash.html)** — auto-bounce through opening clouds and laser flying cars.
+- **[Ogre Smash!](https://robmarkcole.github.io/pimoroni-presto-arcade/games/ogre-smash.html)** — smash traffic, leap hazards and chase a high score.
+- **[Rainbow Barrage](https://robmarkcole.github.io/pimoroni-presto-arcade/games/rainbow-barrage.html)** — collapse storm towers with arcing rainbow missiles.
+- **[Zombie Escape](https://robmarkcole.github.io/pimoroni-presto-arcade/games/zombie-escape.html)** — collect every gem while escaping pursuing zombies.
+- **[Awesome Game](https://robmarkcole.github.io/pimoroni-presto-arcade/games/awesome-game.html)** — dodge falling obstacles and collect treasure.
+- **[Random Maze](https://robmarkcole.github.io/pimoroni-presto-arcade/games/random-maze.html)** — escape increasingly difficult generated mazes.
+- **[Frogger](https://robmarkcole.github.io/pimoroni-presto-arcade/games/frogger.html)** — cross traffic and moving platforms through four themes.
 
 Full game guides, controls, rules and screenshots live on the
 [hosted arcade documentation](https://robmarkcole.github.io/pimoroni-presto-arcade/).
