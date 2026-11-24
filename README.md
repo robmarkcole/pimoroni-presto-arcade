@@ -8,6 +8,7 @@ over I2C.
 
 ## Games
 
+- **[Road Riot](https://robmarkcole.github.io/pimoroni-presto-arcade/games/road-riot.html)** — race motorcycles through three perspective highways, dodge traffic and knock rival riders out of your way.
 - **[Duck Kart Rally](https://robmarkcole.github.io/pimoroni-presto-arcade/games/duck-kart-rally.html)** — steer a duck kart through boosts, coins and rocky tracks.
 - **[Find Your Best Friend](https://robmarkcole.github.io/pimoroni-presto-arcade/games/find-your-best-friend.html)** — catch a monster, search the doors and rescue your friend.
 - **[Fly Smash](https://robmarkcole.github.io/pimoroni-presto-arcade/games/fly-smash.html)** — auto-bounce through opening clouds and laser flying cars.
@@ -61,7 +62,7 @@ from the carousel; the Qw/ST Pad handles gameplay. `+` starts or restarts and
 With Presto connected over USB and `mpremote` available:
 
 ```sh
-mpremote cp main.py awesome_game.py random_maze.py frogger.py ogre_smash.py \
+mpremote cp main.py road_riot.py awesome_game.py random_maze.py frogger.py ogre_smash.py \
   zombie_escape.py rainbow_barrage.py fly_smash.py find_your_best_friend.py \
   duck_kart_rally.py :
 mpremote reset
@@ -70,3 +71,12 @@ mpremote reset
 `awesome_game.py` also needs the two original pirate `.16bpp` sprite sheets
 from the Presto demo bundle. The carousel uses an explicit game allowlist, so
 other demo scripts can remain on the board without appearing as arcade games.
+
+### Road Riot controls
+
+`L` / `R` steer, `A` accelerates, `B` (or `D`) brakes, `X` strikes left,
+`Y` strikes right and `U` boosts while accelerating. `+` starts, pauses or
+continues; `-` returns to the arcade. Finish in the top three to unlock the next
+course. Two hits knock a rival down and refill some boost. Avoid cars, oil and
+the verges to protect your bike; the pad LEDs show its remaining condition.
+Road Riot uses original procedural graphics and needs no external assets.
