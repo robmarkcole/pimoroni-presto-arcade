@@ -277,13 +277,12 @@ def update_race(race, controls, audio, dt):
     for key in ("attack", "invulnerable", "crash", "message_time"):
         race[key] = max(0, race[key] - dt)
     top_speed = 62 + race["stage"] * 3
-    throttle = controls.held("A")
     brake = controls.held("B") or controls.held("D")
     if not controls.held("U"):
         race["boost_ready"] = True
     if race["boost"] <= 0:
         race["boost_ready"] = False
-    boosting = (controls.held("U") and throttle and not brake
+    boosting = (controls.held("U") and not brake
                 and race["boost"] > 0 and race["boost_ready"]
                 and race["crash"] <= 0)
     race["boosting"] = boosting
@@ -293,10 +292,8 @@ def update_race(race, controls, audio, dt):
         race["speed"] = max(0, race["speed"] - 45 * dt)
     elif brake:
         race["speed"] = max(0, race["speed"] - 65 * dt)
-    elif throttle:
-        race["speed"] = min(target_speed, race["speed"] + 27 * dt)
     else:
-        race["speed"] = max(0, race["speed"] - 14 * dt)
+        race["speed"] = min(target_speed, race["speed"] + 27 * dt)
     steering = int(controls.held("R")) - int(controls.held("L"))
     race["lean"] = steering
     if race["crash"] <= 0:
@@ -517,7 +514,7 @@ def draw_race(race):
     if race["countdown"] > 0:
         rect(51, 91, 138, 55, INK)
         centre(str(int(math.ceil(race["countdown"]))), 98, YELLOW, 4)
-        centre("HOLD A TO ACCELERATE", 136, WHITE)
+        centre("AUTO GAS - GET READY!", 136, WHITE)
     elif race["clock"] < 0.75:
         centre("GO!", 103, GREEN, 4)
 
@@ -537,8 +534,8 @@ def draw_title(race, high):
     centre("ROAD RIOT", 12, YELLOW, 3)
     centre("MOTORCYCLE MAYHEM", 38, WHITE)
     rect(8, 134, 224, 101, INK)
-    centre("L/R STEER   A GAS   B BRAKE", 142, WHITE)
-    centre("X HIT LEFT   Y HIT RIGHT", 157, WHITE)
+    centre("L/R STEER   AUTO GAS", 142, WHITE)
+    centre("Y HIT LEFT   A HIT RIGHT", 157, WHITE)
     centre("U BOOST   + PAUSE   - MENU", 172, CYAN)
     centre("FINISH TOP 3 TO ADVANCE", 187, YELLOW)
     centre("+ START YOUR ENGINE", 204, GREEN)
@@ -604,9 +601,9 @@ def main():
                     state = "race"
             if state == "race":
                 # Combat is edge-triggered; holding a button cannot auto-hit.
-                if controller.pressed("X"):
+                if controller.pressed("Y"):
                     attack(race, -1, audio)
-                elif controller.pressed("Y"):
+                elif controller.pressed("A"):
                     attack(race, 1, audio)
                 remaining = dt
                 while remaining > 0:

@@ -74,8 +74,9 @@ other demo scripts can remain on the board without appearing as arcade games.
 
 ### Road Riot controls
 
-`L` / `R` steer, `A` accelerates, `B` (or `D`) brakes, `X` strikes left,
-`Y` strikes right and `U` boosts while accelerating. `+` starts, pauses or
+The bike accelerates automatically. `L` steers left, `R` steers right,
+`Y` strikes left, `A` strikes right, `B` (or `D`) brakes and `U` boosts.
+Release the brake to accelerate again. `+` starts, pauses or
 continues; `-` returns to the arcade. Finish in the top three to unlock the next
 course. Two hits knock a rival down and refill some boost. Avoid cars, oil and
 the verges to protect your bike; the pad LEDs show its remaining condition.

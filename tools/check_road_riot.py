@@ -101,33 +101,43 @@ class GameplayChecks(unittest.TestCase):
     def test_countdown_freezes_the_entire_race(self):
         self.race["countdown"] = 3
         positions = [r["z"] for r in self.race["rivals"]]
-        self.step(2, Controls("A", "U"))
+        self.step(2, Controls("U"))
         self.assertEqual(self.race["distance"], 0)
         self.assertEqual(positions, [r["z"] for r in self.race["rivals"]])
         self.assertEqual(self.race["boost"], 100)
 
-    def test_acceleration_brake_and_no_throttle(self):
+    def test_automatic_acceleration_brake_and_recovery(self):
         self.race["rivals"] = []
         self.race["traffic"] = []
-        self.step(2, Controls("A"))
+        self.step(2)
         speed = self.race["speed"]
         self.assertGreater(speed, 40)
-        self.step(0.4, Controls("B", "A", "U"))
+        self.step(0.4, Controls("B", "U"))
         self.assertLess(self.race["speed"], speed - 20)
         self.assertFalse(self.race["boosting"])
-        self.race["speed"] = 0
-        self.step(0.4, Controls("U"))
+        self.step(1, Controls("B"))
         self.assertEqual(self.race["speed"], 0)
+        self.step(1)
+        self.assertGreater(self.race["speed"], 20)
 
     def test_steering_and_road_verge_cost(self):
         self.race["rivals"] = []
         self.race["traffic"] = []
-        self.step(2, Controls("L", "A"))
+        self.step(2, Controls("L"))
         self.assertLess(self.race["x"], -0.98)
         self.assertLess(self.race["health"], 100)
         self.assertLessEqual(abs(self.race["x"]), 1.35)
-        self.step(1, Controls("R", "A"))
+        self.step(1, Controls("R"))
         self.assertGreater(self.race["x"], -0.98)
+
+    def test_punch_buttons_do_not_also_steer(self):
+        self.race["rivals"] = []
+        self.race["traffic"] = []
+        self.game.update_race(self.race, Controls("Y", "A"), self.audio, 0.02)
+        self.assertEqual(self.race["x"], 0)
+        self.assertGreater(self.race["speed"], 0)
+        self.game.update_race(self.race, Controls("R"), self.audio, 0.02)
+        self.assertGreater(self.race["x"], 0)
 
     def test_attack_side_cooldown_and_knockout(self):
         rival = self.race["rivals"][0]
@@ -155,7 +165,7 @@ class GameplayChecks(unittest.TestCase):
         self.assertLess(self.race["speed"], 30)
         self.race["rivals"] = []
         self.race["traffic"] = []
-        self.step(1.6, Controls("A"))
+        self.step(1.6)
         self.assertEqual(self.race["crash"], 0)
         self.assertEqual(self.race["invulnerable"], 0)
         self.assertGreater(self.race["speed"], 30)
@@ -166,7 +176,7 @@ class GameplayChecks(unittest.TestCase):
         car = self.game.new_traffic(3.1, 0)
         car.update(x=0, speed=0)
         self.race["traffic"] = [car]
-        self.game.update_race(self.race, Controls("A", "U"), self.audio, 0.1)
+        self.game.update_race(self.race, Controls("U"), self.audio, 0.1)
         self.assertEqual(self.race["health"], 76)
 
     def test_near_miss_scores_once_and_traffic_recycles_ahead(self):
@@ -175,7 +185,7 @@ class GameplayChecks(unittest.TestCase):
         car.update(x=0.4, speed=0)
         self.race["traffic"] = [car]
         self.race["speed"] = 60
-        self.step(1, Controls("A"))
+        self.step(1)
         self.assertEqual(self.race["score"], 40)
         self.assertGreater(car["z"], self.race["distance"] + 200)
 
@@ -196,12 +206,12 @@ class GameplayChecks(unittest.TestCase):
         self.race["traffic"] = []
         self.race["boost"] = 1
         self.race["speed"] = 62
-        self.step(0.2, Controls("A", "U"))
+        self.step(0.2, Controls("U"))
         self.assertFalse(self.race["boosting"])
         self.assertFalse(self.race["boost_ready"])
         self.assertGreater(self.race["boost"], 0)
-        self.step(0.2, Controls("A"))
-        self.step(0.02, Controls("A", "U"))
+        self.step(0.2)
+        self.step(0.02, Controls("U"))
         self.assertTrue(self.race["boosting"])
 
     def test_qualification_failure_wreck_and_finished_race_freeze(self):
@@ -210,10 +220,10 @@ class GameplayChecks(unittest.TestCase):
             race.update(countdown=0, distance=race["length"] - 0.1, speed=60)
             for index, rival in enumerate(race["rivals"]):
                 rival["z"] = race["length"] + 30 if index < position - 1 else 0
-            self.game.update_race(race, Controls("A"), self.audio, 0.02)
+            self.game.update_race(race, Controls(), self.audio, 0.02)
             self.assertEqual(race["result"], expected)
             score = race["score"]
-            self.game.update_race(race, Controls("A"), self.audio, 0.02)
+            self.game.update_race(race, Controls(), self.audio, 0.02)
             self.assertEqual(race["score"], score)
         self.race["health"] = 0
         self.step(0.02)
@@ -255,7 +265,7 @@ class GameplayChecks(unittest.TestCase):
                           if -8 < car["z"] - self.race["distance"] < 55]
                 target = min(options, key=lambda x: abs(x - self.race["x"]) * 0.1 +
                              sum(max(0, 0.48 - abs(x - car["x"])) * 10 for car in danger))
-                keys = ["A"]
+                keys = []
                 if self.race["clock"] % 6 < 3:
                     keys.append("U")
                 if abs(target - self.race["x"]) > 0.04:
