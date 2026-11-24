@@ -8,7 +8,7 @@ over I2C.
 
 ## Games
 
-- **[Road Riot](https://robmarkcole.github.io/pimoroni-presto-arcade/games/road-riot.html)** — race motorcycles through three perspective highways, dodge traffic and knock rival riders out of your way.
+- **[Road Riot](https://robmarkcole.github.io/pimoroni-presto-arcade/games/road-riot.html)** — automatically accelerate through three motorcycle races, steer around traffic and punch rival riders with the right-hand buttons.
 - **[Duck Kart Rally](https://robmarkcole.github.io/pimoroni-presto-arcade/games/duck-kart-rally.html)** — steer a duck kart through boosts, coins and rocky tracks.
 - **[Find Your Best Friend](https://robmarkcole.github.io/pimoroni-presto-arcade/games/find-your-best-friend.html)** — catch a monster, search the doors and rescue your friend.
 - **[Fly Smash](https://robmarkcole.github.io/pimoroni-presto-arcade/games/fly-smash.html)** — auto-bounce through opening clouds and laser flying cars.
@@ -59,7 +59,10 @@ from the carousel; the Qw/ST Pad handles gameplay. `+` starts or restarts and
 
 ## Install
 
-With Presto connected over USB and `mpremote` available:
+Use the [official Presto MicroPython firmware](https://github.com/pimoroni/presto/releases/latest).
+The `-with-filesystem` bundle includes the carousel's
+`Roboto-Medium-With-Material-Symbols.af` font and the pirate sprites used by
+Awesome Game. With Presto connected over USB and `mpremote` available:
 
 ```sh
 mpremote cp main.py road_riot.py awesome_game.py random_maze.py frogger.py ogre_smash.py \
@@ -74,10 +77,28 @@ other demo scripts can remain on the board without appearing as arcade games.
 
 ### Road Riot controls
 
-The bike accelerates automatically. `L` steers left, `R` steers right,
-`Y` strikes left, `A` strikes right, `B` (or `D`) brakes and `U` boosts.
-Release the brake to accelerate again. `+` starts, pauses or
-continues; `-` returns to the arcade. Finish in the top three to unlock the next
-course. Two hits knock a rival down and refill some boost. Avoid cars, oil and
-the verges to protect your bike; the pad LEDs show its remaining condition.
-Road Riot uses original procedural graphics and needs no external assets.
+The bike accelerates automatically after the countdown, so you can focus on
+steering with the left keypad and punching with the right keypad.
+
+| Button | Action |
+| --- | --- |
+| `L` / `R` | Steer left / right |
+| `Y` / `A` | Punch left / right |
+| `B` or `D` | Brake; release to accelerate again |
+| `U` | Boost; release after emptying the tank before boosting again |
+| `+` | Start, pause, resume or continue |
+| `-` | Return to the arcade |
+
+Tap and release each punch button for another attack. Two hits knock a rival
+down temporarily and restore some boost. Finish in the top three to advance
+through Sunset Strip, Canyon Run and Midnight Coast. Avoid cars, oil and the
+verges to protect your bike; the pad LEDs show its remaining condition.
+Scores carry between qualifying courses, and your best score survives resets.
+Road Riot uses original procedural graphics and needs no external game assets.
+
+### Road Riot development checks
+
+Run the gameplay checks with `python3 tools/check_road_riot.py`. Regenerate the
+documentation previews with
+`uv run --with pillow python tools/check_road_riot.py --render`.
+The previews use the game's drawing functions with a substitute host font.
